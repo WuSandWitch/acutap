@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 enum Constitution: String, Codable, CaseIterable, Identifiable, Hashable {
     case balanced, qiDeficiency, yinDeficiency, yangDeficiency,
@@ -74,6 +74,149 @@ struct VitalSnapshot: Codable, Hashable {
     let sleepScore: Int
     let spo2: Double
     let restingHR: Int
+    var steps: Int = 0
+    var mindfulMinutes: Int = 0
+}
+
+// MARK: - 天氣（每日點穴的環境依據）
+
+struct Weather: Codable, Hashable {
+    enum Condition: String, Codable {
+        case sunny, cloudy, rainy, humid, windy, cold
+
+        var symbol: String {
+            switch self {
+            case .sunny:  "sun.max.fill"
+            case .cloudy: "cloud.fill"
+            case .rainy:  "cloud.rain.fill"
+            case .humid:  "humidity.fill"
+            case .windy:  "wind"
+            case .cold:   "thermometer.snowflake"
+            }
+        }
+
+        var displayName: String {
+            switch self {
+            case .sunny:  "晴朗"
+            case .cloudy: "多雲"
+            case .rainy:  "降雨"
+            case .humid:  "濕悶"
+            case .windy:  "風大"
+            case .cold:   "偏冷"
+            }
+        }
+    }
+
+    let condition: Condition
+    let temperature: Int      // °C
+    let humidity: Int         // %
+    let city: String
+    /// 中醫養生觀點的天氣提示
+    let tcmTip: String
+}
+
+// MARK: - 健康指標（HealthKit 摘要卡）
+
+struct HealthMetric: Identifiable, Hashable {
+    enum Kind: String, CaseIterable {
+        case hrv, sleep, restingHR, steps
+
+        var title: String {
+            switch self {
+            case .hrv: "心率變異"
+            case .sleep: "睡眠分數"
+            case .restingHR: "靜息心率"
+            case .steps: "步數"
+            }
+        }
+        var unit: String {
+            switch self {
+            case .hrv: "ms"
+            case .sleep: "分"
+            case .restingHR: "bpm"
+            case .steps: "步"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .hrv: "waveform.path.ecg"
+            case .sleep: "bed.double.fill"
+            case .restingHR: "heart.fill"
+            case .steps: "figure.walk"
+            }
+        }
+        var tint: Color {
+            switch self {
+            case .hrv: Theme.teal
+            case .sleep: Color(red: 0.45, green: 0.40, blue: 0.85)
+            case .restingHR: Color(red: 0.92, green: 0.35, blue: 0.42)
+            case .steps: Color(red: 0.30, green: 0.72, blue: 0.55)
+            }
+        }
+    }
+
+    let id = UUID()
+    let kind: Kind
+    let value: Int
+    /// 0...1，相對於健康基準的水位，用於環狀進度
+    let level: Double
+    /// 簡短狀態（如「良好」「偏低」）
+    let status: String
+}
+
+// MARK: - 統一的「點穴 session」—— 所有點穴入口都導向 AR
+
+struct PointSession: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let acupoints: [Acupoint]
+
+    var totalSeconds: Int { acupoints.reduce(0) { $0 + $1.pressSeconds } }
+
+    init(title: String, subtitle: String = "", acupoints: [Acupoint]) {
+        self.title = title
+        self.subtitle = subtitle
+        self.acupoints = acupoints
+    }
+
+    init(from p: Prescription) {
+        self.title = p.title
+        self.subtitle = p.rationale
+        self.acupoints = p.acupoints
+    }
+}
+
+// MARK: - AI 快捷意圖（情緒 / 生理 / 目標）
+
+struct QuickIntent: Identifiable, Hashable {
+    enum Category: String, CaseIterable, Identifiable {
+        case emotion, physical, goal
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .emotion: "情緒狀態"
+            case .physical: "生理狀態"
+            case .goal: "我的目標"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .emotion: "face.smiling"
+            case .physical: "figure.mind.and.body"
+            case .goal: "target"
+            }
+        }
+    }
+
+    let id = UUID()
+    let category: Category
+    let label: String
+    let symbol: String
+    /// 點選後送給 AI 的句子
+    let prompt: String
+    /// 對應推薦穴位 ID
+    let acupointIDs: [String]
 }
 
 struct UserProfile: Codable {

@@ -5,25 +5,11 @@ final class AppEnvironment {
     var health: any HealthServicing = MockHealthService()
     var data: MockDataProvider = .shared
     var profile: UserProfile = .demo
-    var hasOnboarded: Bool = false
-    var todaysPrescription: Prescription
-    var practiceHistory: [Prescription] = []
 
-    // MARK: - Gamification
-    var streakDays: Int = 7
-    var xp: Int = 1240
-    var xpForNextLevel: Int = 1500
-    var level: Int { max(1, xp / 500 + 1) }
-    /// 7 日完成狀態（index 0 = 6 天前 … 6 = 今天）
-    var weekCompletion: [Bool] = [true, true, false, true, true, true, false]
-    /// 今日是否已完成處方
-    var completedToday: Bool { weekCompletion.last ?? false }
-    /// 今日 3 個小任務
-    var dailyQuests: [DailyQuest] = [
-        .init(title: "完成穴位按摩", icon: "hand.tap.fill", reward: 30, done: false),
-        .init(title: "舌診打卡", icon: "mouth.fill", reward: 15, done: false),
-        .init(title: "呼吸 3 分鐘", icon: "wind", reward: 10, done: true)
-    ]
+    /// 今日 AI 推薦處方（結合天氣 × 健康 × 體質）
+    var todaysPrescription: Prescription
+    /// 最近完成的點穴紀錄
+    var practiceHistory: [PointSession] = []
 
     init() {
         let p = MockDataProvider.shared
@@ -44,24 +30,11 @@ final class AppEnvironment {
         )
     }
 
-    func recordCompletion(_ p: Prescription) {
-        practiceHistory.insert(p, at: 0)
-        if var last = weekCompletion.last, !last {
-            last = true
-            weekCompletion[weekCompletion.count - 1] = true
-            streakDays += 1
-            xp += 30
-        }
-        if let i = dailyQuests.firstIndex(where: { $0.title == "完成穴位按摩" }) {
-            dailyQuests[i].done = true
-        }
-    }
-}
+    /// 今日點穴的入口 session（每日點穴卡 → AR）
+    var dailySession: PointSession { PointSession(from: todaysPrescription) }
 
-struct DailyQuest: Identifiable, Hashable {
-    let id = UUID()
-    let title: String
-    let icon: String
-    let reward: Int
-    var done: Bool
+    func recordCompletion(_ session: PointSession) {
+        practiceHistory.insert(session, at: 0)
+        if practiceHistory.count > 12 { practiceHistory.removeLast() }
+    }
 }

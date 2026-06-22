@@ -14,15 +14,10 @@ struct MAICApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if env.hasOnboarded {
-                    RootTabView()
-                } else {
-                    OnboardingView()
-                }
-            }
-            .environment(env)
-            .preferredColorScheme(scheme)
+            RootTabView()
+                .environment(env)
+                .tint(Theme.teal)
+                .preferredColorScheme(scheme)
         }
     }
 

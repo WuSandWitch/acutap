@@ -36,10 +36,6 @@ struct ProfileView: View {
                                 .monospacedDigit()
                         }
                     }
-                    Button("重新進行體質快測") {
-                        env.hasOnboarded = false
-                    }
-                    .foregroundStyle(Color.accentColor)
                 }
 
                 Section("設定") {
