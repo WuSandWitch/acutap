@@ -6,6 +6,7 @@ struct ProfileView: View {
     @AppStorage("appearance") private var appearance: String = "system"
     @AppStorage("notifications") private var notifications: Bool = true
     @State private var showingLogoutAlert = false
+    @State private var showConstitutionSheet = false
 
     var body: some View {
         NavigationStack {
@@ -47,6 +48,10 @@ struct ProfileView: View {
                             }
                         }
                     }
+                    Button("重新體質分析") {
+                        showConstitutionSheet = true
+                    }
+                    .font(.subheadline)
                 }
 
                 Section("設定") {
@@ -89,6 +94,12 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("登出後需要重新使用 Google 帳號登入。")
+            }
+            .sheet(isPresented: $showConstitutionSheet) {
+                ConstitutionTestView { profile in
+                    env.profile = profile
+                    showConstitutionSheet = false
+                }
             }
         }
     }
