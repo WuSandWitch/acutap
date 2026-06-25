@@ -80,6 +80,16 @@ struct ARAcupointView: View {
     }
 
     private var isGuided: Bool { activeSession != nil }
+    /// 當前穴位能否投影（關節可偵測）
+    private var canProjectCurrent: Bool {
+        guard isGuided, let c = current, let body = camera.poseDetector.detectedBody else { return false }
+        if let rule = acupointJointRules[c.id] {
+            let proxOK = body.joints[rule.proximal] != nil || mirroredJoint(rule.proximal).map { body.joints[$0] != nil } ?? false
+            let distOK = body.joints[rule.distal] != nil || mirroredJoint(rule.distal).map { body.joints[$0] != nil } ?? false
+            return proxOK && distOK
+        }
+        return true
+    }
     private var launchedModally: Bool { initialSession != nil }
 
     /// 偵測模式標籤
@@ -293,6 +303,7 @@ struct ARAcupointView: View {
             .position(pos)
             .scaleEffect(appeared ? 1 : 0.3)
             .opacity(appeared ? 1 : 0)
+            .opacity(isGuided && !canProjectCurrent ? 0 : 1)
             .animation(Theme.Motion.bouncy.delay(Double(i) * 0.08), value: appeared)
             .animation(Theme.Motion.snappy, value: current?.id)
         }
@@ -625,6 +636,8 @@ struct ARAcupointView: View {
 
     private func tick() {
         guard isGuided, running, !completed, let c = current else { return }
+        // 關節偵測不到 → 暫停計時
+        guard canProjectCurrent else { return }
         elapsed += 1
         if elapsed >= c.pressSeconds {
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
