@@ -195,7 +195,9 @@ final class AuthService: NSObject {
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: googleClientID),
-            // iOS 類型不需要 redirect_uri，Google 自動用 REVERSED_CLIENT_ID
+            // iOS 類型 redirect_uri = REVERSED_CLIENT_ID 格式
+            URLQueryItem(name: "redirect_uri",
+                         value: "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og:/oauth2callback"),
             URLQueryItem(name: "response_type", value: "id_token"),
             URLQueryItem(name: "scope", value: "openid email profile"),
             URLQueryItem(name: "nonce", value: UUID().uuidString),
