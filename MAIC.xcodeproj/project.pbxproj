@@ -395,18 +395,19 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99939GB8QD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.wusandwitch.acutap\";\n    CFBundleURLSchemes =     (\n        \"com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og\"\n    );\n}";
 				INFOPLIST_KEY_NSCameraUsageDescription = "穴新達需要使用相機，以 AR 即時將穴位光點疊合在你的身上引導點穴。";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "穴新達需要讀取您的健康資料（心率、睡眠、步數），以提供個人化穴位養生建議。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "穴新達會將您的健康指標上傳至後端，以 AI 分析您的體質變化趨勢。";
-				INFOPLIST_KEY_CFBundleURLTypes = ({CFBundleURLSchemes = (com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og); CFBundleURLName = "com.wusandwitch.acutap";});
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -431,18 +432,19 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99939GB8QD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.wusandwitch.acutap\";\n    CFBundleURLSchemes =     (\n        \"com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og\"\n    );\n}";
 				INFOPLIST_KEY_NSCameraUsageDescription = "穴新達需要使用相機，以 AR 即時將穴位光點疊合在你的身上引導點穴。";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "穴新達需要讀取您的健康資料（心率、睡眠、步數），以提供個人化穴位養生建議。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "穴新達會將您的健康指標上傳至後端，以 AI 分析您的體質變化趨勢。";
-				INFOPLIST_KEY_CFBundleURLTypes = ({CFBundleURLSchemes = (com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og); CFBundleURLName = "com.wusandwitch.acutap";});
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -466,7 +468,6 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = slasho.MAICTests;
@@ -487,7 +488,6 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = slasho.MAICTests;
@@ -507,7 +507,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = slasho.MAICUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -526,7 +525,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = slasho.MAICUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
