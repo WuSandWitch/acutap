@@ -16,20 +16,27 @@ struct DailyView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
+                let topInset = geo.safeAreaInsets.top
+                let heroHeight: CGFloat = prescriptionHeroHeight
+                let spacing: CGFloat = 16
+                let bottomPadding: CGFloat = Theme.Spacing.l
+                let cardHeight = geo.size.height - heroHeight - spacing - bottomPadding - topInset - 8
+
                 VStack(spacing: 0) {
                     prescriptionHero
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.top, Theme.Spacing.m)
 
-                    Spacer().frame(height: 16)
+                    Spacer().frame(height: spacing)
 
                     statusCard
+                        .frame(height: max(cardHeight, 160))
                         .padding(.horizontal, Theme.Spacing.l)
-                        .padding(.bottom, Theme.Spacing.l)
+                        .padding(.bottom, bottomPadding)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             }
-            .background(backgroundWash)
+            .background(Color(.systemBackground))
             .navigationBarHidden(true)
             .fullScreenCover(item: $arSession) { session in
                 ARAcupointView(session: session).environment(env)
@@ -38,13 +45,9 @@ struct DailyView: View {
         .task { await loadInsights() }
     }
 
-    private var backgroundWash: some View {
-        ZStack {
-            Color(.systemBackground)
-            Theme.softBrandGradient
-                .frame(height: 260).frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea()
-        }
+    // 今日點穴區塊的固定高度
+    private var prescriptionHeroHeight: CGFloat {
+        280
     }
 
     // MARK: 今日點穴
@@ -115,7 +118,7 @@ struct DailyView: View {
 
     private var statusCard: some View {
         VStack(spacing: 0) {
-            // 標題列
+            // 標題列（固定）
             HStack(spacing: 6) {
                 Image(systemName: "sparkles").font(.caption).foregroundStyle(Theme.teal)
                 Text("看看狀態吧")
@@ -132,30 +135,42 @@ struct DailyView: View {
             }
             .padding(.bottom, 12)
 
-            // 分隔線
             Divider().foregroundStyle(.tertiary).padding(.bottom, 12)
 
+            // 內容區（固定高度內填滿）
             if isLoadingInsights {
-                VStack(spacing: 6) {
+                Spacer()
+                HStack {
                     Spacer()
-                    Text("載入中…")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    VStack(spacing: 6) {
+                        ProgressView().scaleEffect(0.8)
+                        Text("載入中…")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
                     Spacer()
                 }
+                Spacer()
             } else if let card = insights {
                 cardBody(card)
+                    .frame(maxHeight: .infinity, alignment: .top)
             } else {
-                VStack(spacing: 6) {
+                Spacer()
+                HStack {
                     Spacer()
                     Text("點擊重新整理以載入")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Spacer()
                 }
+                Spacer()
             }
         }
         .padding(16)
         .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.03), radius: 4, y: 1)
     }
 
     private func cardBody(_ card: HealthInsights) -> some View {
