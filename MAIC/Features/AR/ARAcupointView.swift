@@ -276,10 +276,7 @@ struct ARAcupointView: View {
         // 1. 嘗試 Vision 關節點定位（62 個核心穴精準對位）
         // 2. 臉部穴位用臉部 box
         // 3. 全身 bounding box fallback
-        var pos = body.smartProject(acupoint: acupoint, viewSize: size)
-        // Vision raw camera 是 unmirrored，前鏡頭 preview 有 mirror → 反轉 X
-        pos.x = size.width - pos.x
-        return pos
+        return body.smartProject(acupoint: acupoint, viewSize: size)
     }
 
     /// 數學編排（無身體偵測時的 fallback）
@@ -311,7 +308,7 @@ struct ARAcupointView: View {
         ]
         for (joint, label) in jointLabels {
             if let pt = body.joints[joint] {
-                let x = (1.0 - pt.x) * size.width
+                let x = pt.x * size.width
                 let y = pt.y * size.height
                 dots[label] = CGPoint(x: x, y: y)
             }
@@ -320,7 +317,7 @@ struct ARAcupointView: View {
         // Face rect
         var faceRect: CGRect?
         if let fr = body.faceRect {
-            let x = (1.0 - fr.minX) * size.width
+            let x = fr.minX * size.width
             let y = fr.minY * size.height
             let w = fr.width * size.width
             let h = fr.height * size.height
@@ -356,7 +353,7 @@ struct ARAcupointView: View {
                 if let leftHand = body.handJoints[.left] {
                     ForEach(Array(leftHand.keys), id: \.rawValue) { j in
                         if let pt = leftHand[j] {
-                            let x = (1.0 - pt.x) * size.width
+                            let x = pt.x * size.width
                             let y = pt.y * size.height
                             Circle().fill(Color.cyan.opacity(0.8))
                                 .frame(width: 6, height: 6)
@@ -367,7 +364,7 @@ struct ARAcupointView: View {
                 if let rightHand = body.handJoints[.right] {
                     ForEach(Array(rightHand.keys), id: \.rawValue) { j in
                         if let pt = rightHand[j] {
-                            let x = (1.0 - pt.x) * size.width
+                            let x = pt.x * size.width
                             let y = pt.y * size.height
                             Circle().fill(Color.green.opacity(0.8))
                                 .frame(width: 6, height: 6)
