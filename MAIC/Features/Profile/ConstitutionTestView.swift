@@ -108,7 +108,7 @@ struct ConstitutionTestView: View {
                     Text(dominant.key.displayName)
                         .font(.system(size: 36, weight: .bold))
                         .foregroundStyle(Theme.teal)
-                    Text(dominant.key.description)
+                    Text(dominant.key.summary)
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
