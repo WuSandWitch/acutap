@@ -72,7 +72,10 @@ final class CameraController: NSObject {
 
                 // — 方向校正（前鏡頭要 mirror）—
                 if let connection = videoOutput.connection(with: .video) {
-                    if connection.isVideoMirroringSupported { connection.isVideoMirrored = true }
+                    if connection.isVideoMirroringSupported {
+                        connection.automaticallyAdjustsVideoMirroring = false
+                        connection.isVideoMirrored = true
+                    }
                     if connection.isVideoOrientationSupported {
                         connection.videoOrientation = .portrait
                     }
@@ -119,9 +122,10 @@ struct CameraPreview: UIViewRepresentable {
         let view = PreviewUIView()
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
-        // 前鏡頭要 mirror
-        if view.previewLayer.connection?.isVideoMirroringSupported == true {
-            view.previewLayer.connection?.isVideoMirrored = true
+        // 前鏡頭要 mirror — 先關閉自動調整
+        if let connection = view.previewLayer.connection, connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = true
         }
         return view
     }

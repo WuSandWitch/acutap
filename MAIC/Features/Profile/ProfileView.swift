@@ -48,8 +48,9 @@ struct ProfileView: View {
                 }
 
                 Section("關於") {
-                    LabeledContent("版本", value: "0.1.0 (Mock)")
-                    LabeledContent("資料來源", value: "本地端模擬")
+                    LabeledContent("版本", value: "1.0.0")
+                    LabeledContent("資料來源", value: "WHO標準穴位 + bankroz骨骼定位")
+                    LabeledContent("後端", value: "acutap-backend.zudo.cc")
                 }
             }
             .navigationTitle("個人")
