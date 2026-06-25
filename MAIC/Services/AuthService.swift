@@ -59,11 +59,6 @@ final class AuthService: NSObject {
         "988106203094-uu3tbireufumti5ts5jd53kdggh9a8og.apps.googleusercontent.com"
     }
 
-    /// 自訂 URL Scheme — 使用 REVERSED_CLIENT_ID（Google iOS OAuth 標準）
-    private var redirectScheme: String { "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og" }
-    private var redirectHost: String { "oauth2callback" }
-    private var redirectURI: String { "\(redirectScheme)://\(redirectHost)" }
-
     /// 後端 id_token 驗證 endpoint
     private var verifyTokenURL: URL {
         URL(string: APIConfig.baseURL + "/api/auth/verify")!
@@ -119,7 +114,7 @@ final class AuthService: NSObject {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let session = ASWebAuthenticationSession(
                 url: authURL,
-                callbackURLScheme: redirectScheme
+                callbackURLScheme: "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og"
             ) { callbackURL, error in
                 if let error = error {
                     let nsError = error as NSError
@@ -198,16 +193,12 @@ final class AuthService: NSObject {
 
     private func buildAuthURL() throws -> URL {
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
-        let nonce = UUID().uuidString
         components.queryItems = [
             URLQueryItem(name: "client_id", value: googleClientID),
-            URLQueryItem(name: "redirect_uri", value: redirectURI),
-            // iOS 類型：用 id_token + code 混合流程，後端驗證 id_token
-            URLQueryItem(name: "response_type", value: "id_token code"),
+            // iOS 類型不需要 redirect_uri，Google 自動用 REVERSED_CLIENT_ID
+            URLQueryItem(name: "response_type", value: "id_token"),
             URLQueryItem(name: "scope", value: "openid email profile"),
-            URLQueryItem(name: "nonce", value: nonce),
-            URLQueryItem(name: "access_type", value: "offline"),
-            URLQueryItem(name: "prompt", value: "consent"),
+            URLQueryItem(name: "nonce", value: UUID().uuidString),
         ]
         guard let url = components.url else {
             throw AuthError.notConfigured
