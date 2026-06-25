@@ -66,6 +66,7 @@ struct ARAcupointView: View {
     @State private var completed = false
     @State private var scan = false
     @State private var appeared = false
+    @State private var showFaceHint = false
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -91,6 +92,11 @@ struct ARAcupointView: View {
     private var markers: [Acupoint] {
         if let s = activeSession { return s.acupoints }
         return env.data.acupoints(ids: selectedRegion.acupointIDs)
+    }
+    /// 引導模式中是否有身體穴位（非純臉部）
+    private var hasBodyAcupoints: Bool {
+        guard let s = activeSession else { return false }
+        return s.acupoints.contains { !DetectedBody.isFaceAcupoint($0.bodyPoint) }
     }
     private var current: Acupoint? {
         guard isGuided, !markers.isEmpty else { return nil }
@@ -119,6 +125,25 @@ struct ARAcupointView: View {
             .padding(.top, Theme.Spacing.s)
             .padding(.bottom, Theme.Spacing.l)
 
+            // FaceOnly 提示
+            if showFaceHint {
+                VStack(spacing: 8) {
+                    Image(systemName: "arrowshape.turn.up.backward.fill")
+                        .font(.title2)
+                    Text("請退後讓鏡頭看到全身")
+                        .font(.headline)
+                    Text("目前只偵測到臉部，看不到身體穴位")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.white)
+                .padding(20)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .environment(\.colorScheme, .dark)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .frame(maxHeight: .infinity, alignment: .center)
+                .padding(.bottom, 100)
+            }
+
             if completed { completionOverlay }
         }
         .background(Color.black)
@@ -132,6 +157,14 @@ struct ARAcupointView: View {
         }
         .onDisappear { camera.stop() }
         .onReceive(timer) { _ in tick() }
+        .onChange(of: camera.poseDetector.detectionMode) { _, mode in
+            // faceOnly + session 有身體穴位 → 提示
+            if mode == .faceOnly && hasBodyAcupoints {
+                withAnimation { showFaceHint = true }
+            } else {
+                withAnimation { showFaceHint = false }
+            }
+        }
     }
 
     // MARK: Camera / background

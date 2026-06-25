@@ -34,6 +34,8 @@ enum DetectionMode: Equatable {
 
 // MARK: - 人體 + 臉部偵測資料
 
+enum HandSide: String { case left, right }
+
 struct DetectedBody: Equatable {
     /// 身體 bounding box（正規化 0…1）
     let boundingBox: CGRect
@@ -43,6 +45,8 @@ struct DetectedBody: Equatable {
     let faceRect: CGRect?
     /// 臉部關鍵點
     let faceLandmarks: FaceLandmarkPoints?
+    /// 手部關節點（左手 / 右手）
+    let handJoints: [HandSide: [VNHumanHandPoseObservation.JointName: CGPoint]]
 
     // MARK: 輔助屬性
 
@@ -157,6 +161,18 @@ struct DetectedBody: Equatable {
 
     /// 混合投影：有關節規則就用關節點定位，否則用 bounding box
     func smartProject(acupoint: Acupoint, viewSize: CGSize) -> CGPoint {
+        // 0. 嘗試手部穴位定位（用 Vision Hand Pose）
+        if let handRule = handAcupointRules[acupoint.id] {
+            // 找左右手哪隻有這個關節
+            for (_, handJts) in handJoints {
+                if let pos = handJts[handRule.refJoint] {
+                    let x = (pos.x + CGFloat(handRule.dx)) * viewSize.width
+                    let y = (pos.y + CGFloat(handRule.dy)) * viewSize.height
+                    return CGPoint(x: x, y: y)
+                }
+            }
+        }
+
         // 1. 嘗試關節點定位（最準確）
         if let pos = projectUsingJoints(acupointID: acupoint.id,
                                          bodyPoint: acupoint.bodyPoint,
@@ -211,6 +227,7 @@ final class BodyPoseDetector: @unchecked Sendable {
     private let poseRequest = VNDetectHumanBodyPoseRequest()
     private let faceRectRequest = VNDetectFaceRectanglesRequest()
     private let faceLandmarksRequest = VNDetectFaceLandmarksRequest()
+    private let handPoseRequest = VNDetectHumanHandPoseRequest()
 
     private let visionQueue = DispatchQueue(label: "acutap.vision.pose", qos: .userInitiated)
 
@@ -230,13 +247,14 @@ final class BodyPoseDetector: @unchecked Sendable {
                                                 options: [:])
 
             do {
-                // 同時跑人體 + 臉部偵測
-                try handler.perform([self.poseRequest, self.faceRectRequest, self.faceLandmarksRequest])
+                // 同時跑人體 + 臉部 + 手部偵測
+                try handler.perform([self.poseRequest, self.faceRectRequest, self.faceLandmarksRequest, self.handPoseRequest])
 
                 let body = self.buildDetectedBody(
                     pose: self.poseRequest.results?.first,
                     faceObservations: self.faceRectRequest.results,
-                    faceLandmarkObservations: self.faceLandmarksRequest.results
+                    faceLandmarkObservations: self.faceLandmarksRequest.results,
+                    handObservations: self.handPoseRequest.results
                 )
 
                 DispatchQueue.main.async {
@@ -255,7 +273,8 @@ final class BodyPoseDetector: @unchecked Sendable {
     private func buildDetectedBody(
         pose: VNHumanBodyPoseObservation?,
         faceObservations: [VNFaceObservation]?,
-        faceLandmarkObservations: [VNFaceObservation]?
+        faceLandmarkObservations: [VNFaceObservation]?,
+        handObservations: [VNHumanHandPoseObservation]?
     ) -> DetectedBody {
         var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
         var minX: CGFloat = 1, maxX: CGFloat = 0
@@ -320,9 +339,33 @@ final class BodyPoseDetector: @unchecked Sendable {
             }
         }
 
+        // — 手部關節 —
+        var handJoints: [HandSide: [VNHumanHandPoseObservation.JointName: CGPoint]] = [:]
+        if let hands = handObservations {
+            for observation in hands {
+                let side: HandSide = observation.chirality == .left ? .left : .right
+                var joints: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+                let allHandJoints: [VNHumanHandPoseObservation.JointName] = [
+                    .wrist, .thumbTip, .thumbIP, .thumbMP, .thumbCMC,
+                    .indexTip, .indexDIP, .indexPIP, .indexMCP,
+                    .middleTip, .middleDIP, .middlePIP, .middleMCP,
+                    .ringTip, .ringDIP, .ringPIP, .ringMCP,
+                    .littleTip, .littleDIP, .littlePIP, .littleMCP,
+                ]
+                for joint in allHandJoints {
+                    if let point = try? observation.recognizedPoint(joint), point.confidence > 0.3 {
+                        joints[joint] = point.location
+                    }
+                }
+                if !joints.isEmpty {
+                    handJoints[side] = joints
+                }
+            }
+        }
+
         // — bounding box —
         guard !joints.isEmpty || faceRect != nil else {
-            return DetectedBody(boundingBox: .zero, joints: [:], faceRect: nil, faceLandmarks: nil)
+            return DetectedBody(boundingBox: .zero, joints: [:], faceRect: nil, faceLandmarks: nil, handJoints: [:])
         }
 
         let padX = joints.isEmpty ? 0 : (maxX - minX) * 0.08
@@ -339,7 +382,8 @@ final class BodyPoseDetector: @unchecked Sendable {
             boundingBox: bbox,
             joints: joints,
             faceRect: faceRect,
-            faceLandmarks: faceLM
+            faceLandmarks: faceLM,
+            handJoints: handJoints
         )
     }
 }

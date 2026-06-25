@@ -84,6 +84,36 @@ let acupointJointRules: [String: JointRule] = {
     ]
 }()
 
+// MARK: - 手部穴位定位規則（使用 Vision Hand Pose 21 點）
+
+/// 手部穴位：使用 HandJointName 定位
+struct HandJointRule {
+    let refJoint: VNHumanHandPoseObservation.JointName
+    let dx: Double  // 相對於關節的 x 偏移 (0-1)
+    let dy: Double
+}
+
+let handAcupointRules: [String: HandJointRule] = [
+    // 合谷：拇指與食指掌骨之間 → 介於 thumbCMC 與 indexMCP 之間
+    "LI4":  .init(refJoint: .indexMCP,  dx: -0.03, dy: -0.01),
+    // 少商：拇指指甲外側 → thumbTip 稍微偏移
+    "LU11": .init(refJoint: .thumbTip,  dx: -0.02, dy: -0.01),
+    // 商陽：食指指甲外側 → indexTip 偏移
+    "LI1":  .init(refJoint: .indexTip,  dx: 0.02,  dy: -0.01),
+    // 少衝：小指指甲外側 → littleTip
+    "HT9":  .init(refJoint: .littleTip, dx: -0.02, dy: -0.01),
+    // 少澤：小指指甲外側 → littleTip
+    "SI1":  .init(refJoint: .littleTip, dx: 0.02,  dy: -0.01),
+    // 中衝：中指指尖 → middleTip
+    "PC9":  .init(refJoint: .middleTip, dx: 0.0,   dy: -0.01),
+    // 關衝：無名指指甲外側 → ringTip
+    "TE1":  .init(refJoint: .ringTip,   dx: 0.02,  dy: -0.01),
+    // 後谿：手背小指側 → littleMCP
+    "SI3":  .init(refJoint: .littleMCP, dx: -0.02, dy: -0.01),
+    // 腕骨：手腕 → wrist
+    "SI4":  .init(refJoint: .wrist,     dx: 0.0,   dy: 0.0),
+]
+
 // MARK: - 穴位區域分類
 
 enum AcupointRegion {
