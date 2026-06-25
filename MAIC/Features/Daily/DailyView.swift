@@ -21,7 +21,7 @@ struct DailyView: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.top, Theme.Spacing.m)
 
-                    Spacer().frame(height: Theme.Spacing.l)
+                    Spacer().frame(height: 16)
 
                     statusCard
                         .padding(.horizontal, Theme.Spacing.l)
@@ -42,7 +42,7 @@ struct DailyView: View {
         ZStack {
             Color(.systemBackground)
             Theme.softBrandGradient
-                .frame(height: 280).frame(maxHeight: .infinity, alignment: .top)
+                .frame(height: 260).frame(maxHeight: .infinity, alignment: .top)
                 .ignoresSafeArea()
         }
     }
@@ -51,32 +51,32 @@ struct DailyView: View {
 
     private var prescriptionHero: some View {
         let p = env.todaysPrescription
-        return VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("今日點穴")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
+                        .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
                     Text(p.title)
-                        .font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
+                        .font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
                     Text(p.rationale)
-                        .font(.subheadline).foregroundStyle(.white.opacity(0.9))
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 NavigationLink { ProfileView() } label: {
-                    Circle().fill(Theme.brandGradient).frame(width: 42, height: 42)
+                    Circle().fill(Theme.brandGradient).frame(width: 38, height: 38)
                         .overlay(Text(String(env.profile.name.prefix(1)))
-                            .font(.headline).foregroundStyle(.white))
-                        .shadow(color: .white.opacity(0.3), radius: 8, y: 3)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
+                        .shadow(color: .white.opacity(0.25), radius: 6, y: 2)
                 }
             }
 
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 ForEach(p.acupoints) { a in
                     Text(a.nameZh)
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 11).padding(.vertical, 6)
-                        .background(.white.opacity(0.2), in: Capsule())
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(.white.opacity(0.18), in: Capsule())
                         .foregroundStyle(.white)
                 }
             }
@@ -86,14 +86,15 @@ struct DailyView: View {
                 arSession = env.dailySession
             } label: {
                 HStack {
-                    Image(systemName: "camera.viewfinder")
-                    Text("開始 AR 點穴")
+                    Image(systemName: "camera.viewfinder").font(.subheadline)
+                    Text("開始 AR 點穴").font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text("\(p.totalSeconds)s").font(.subheadline.monospacedDigit()).opacity(0.6)
-                    Image(systemName: "arrow.right")
+                    Text("\(p.totalSeconds)s")
+                        .font(.caption.monospacedDigit()).opacity(0.6)
+                    Image(systemName: "chevron.right").font(.caption)
                 }
-                .font(.headline).foregroundStyle(Theme.ocean)
-                .padding(.vertical, 16).padding(.horizontal, 20)
+                .foregroundStyle(Theme.ocean)
+                .padding(.vertical, 14).padding(.horizontal, 18)
                 .background(.white, in: Capsule())
             }
             .buttonStyle(.pressable)
@@ -102,69 +103,68 @@ struct DailyView: View {
         .background {
             ZStack {
                 Theme.heroGradient
-                Circle().fill(.white.opacity(0.12)).frame(width: 240)
-                    .offset(x: 130, y: -110).blur(radius: 6)
+                Circle().fill(.white.opacity(0.1)).frame(width: 200)
+                    .offset(x: 120, y: -100).blur(radius: 5)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: Theme.ocean.opacity(0.28), radius: 24, y: 12)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: Theme.ocean.opacity(0.2), radius: 18, y: 10)
     }
 
     // MARK: 🎴 看看狀態吧
 
     private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.subheadline).foregroundStyle(Theme.teal)
+        VStack(spacing: 0) {
+            // 標題列
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles").font(.caption).foregroundStyle(Theme.teal)
                 Text("看看狀態吧")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.semibold)).foregroundStyle(.primary)
                 Spacer()
                 if isLoadingInsights {
-                    ProgressView().scaleEffect(0.7)
+                    ProgressView().scaleEffect(0.65)
+                } else if insights == nil {
+                    Button { Task { await loadInsights() } } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption).foregroundStyle(Theme.teal)
+                    }
                 }
             }
-            .foregroundStyle(.primary)
+            .padding(.bottom, 12)
+
+            // 分隔線
+            Divider().foregroundStyle(.tertiary).padding(.bottom, 12)
 
             if isLoadingInsights {
-                Spacer()
-                HStack {
+                VStack(spacing: 6) {
                     Spacer()
                     Text("載入中…")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Spacer()
                 }
-                Spacer()
             } else if let card = insights {
                 cardBody(card)
             } else {
-                Spacer()
-                HStack {
+                VStack(spacing: 6) {
                     Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundStyle(Theme.teal)
-                        Text("點擊載入")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
+                    Text("點擊重新整理以載入")
+                        .font(.subheadline).foregroundStyle(.secondary)
                     Spacer()
                 }
-                .onTapGesture { Task { await loadInsights() } }
-                Spacer()
             }
         }
-        .padding(Theme.Spacing.l)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+        .padding(16)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 
     private func cardBody(_ card: HealthInsights) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 狀態摘要
-            HStack(spacing: 10) {
-                Image(systemName: card.icon)
-                    .font(.title3).foregroundStyle(card.color)
+        VStack(alignment: .leading, spacing: 14) {
+            // 狀態
+            HStack(spacing: 8) {
+                Circle().fill(card.color).frame(width: 8, height: 8)
                 Text(card.cardTitle)
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 17, weight: .semibold))
                 Spacer()
                 Text(card.brief)
                     .font(.caption).foregroundStyle(.secondary)
@@ -172,14 +172,15 @@ struct DailyView: View {
                     .multilineTextAlignment(.trailing)
             }
 
-            Divider().foregroundStyle(.tertiary)
-
             // 養生小知識
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "leaf")
-                    .font(.caption).foregroundStyle(.green)
-                Text(card.tcmTip)
-                    .font(.subheadline)
+            if !card.tcmTip.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "leaf")
+                        .font(.caption).foregroundStyle(.green)
+                    Text(card.tcmTip)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             // 中醫說
@@ -189,29 +190,25 @@ struct DailyView: View {
                         .font(.caption).foregroundStyle(.secondary)
                     Text(card.tcmDetail)
                         .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            // 飲食 + 節氣
-            HStack(spacing: 16) {
-                if !card.diet.isEmpty {
-                    Label(card.diet, systemImage: "fork.knife")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                if !card.seasonHint.isEmpty {
-                    Label(card.seasonHint, systemImage: "sun.haze")
-                        .font(.caption).foregroundStyle(.orange)
+            // 底部：飲食 + 節氣
+            if !card.diet.isEmpty || !card.seasonHint.isEmpty {
+                Divider().foregroundStyle(.tertiary)
+                HStack(spacing: 12) {
+                    if !card.diet.isEmpty {
+                        Label(card.diet, systemImage: "fork.knife")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if !card.seasonHint.isEmpty {
+                        Label(card.seasonHint, systemImage: "sun.haze")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
                 }
             }
         }
-    }
-
-    // MARK: Load
-
-    private func loadInsights() async {
-        isLoadingInsights = true
-        insights = await env.fetchHealthInsights()
-        isLoadingInsights = false
     }
 }
 
@@ -232,15 +229,6 @@ struct HealthInsights: Codable {
         case "orange": .orange
         case "red": .red
         default: Theme.teal
-        }
-    }
-
-    var icon: String {
-        switch statusColor {
-        case "green": "heart.fill"
-        case "orange": "exclamationmark.triangle.fill"
-        case "red": "xmark.octagon.fill"
-        default: "sparkles"
         }
     }
 }
