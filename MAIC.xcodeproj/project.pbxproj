@@ -32,6 +32,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		71455CA02FCAEFB900C66E87 /* MAIC */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			excludedFileNames = (
+				"Info.plist",
+			);
 			path = MAIC;
 			sourceTree = "<group>";
 		};
