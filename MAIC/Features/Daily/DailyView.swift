@@ -34,8 +34,8 @@ struct DailyView: View {
             .fullScreenCover(item: $arSession) { session in
                 ARAcupointView(session: session).environment(env)
             }
-            .task { await loadInsights() }
         }
+        .task { await loadInsights() }
     }
 
     private var backgroundWash: some View {
