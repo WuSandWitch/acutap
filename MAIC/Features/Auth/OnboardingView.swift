@@ -153,7 +153,7 @@ struct OnboardingView: View {
         case .constitution:
             if currentQuestion < constitutionQuestions.count - 1 {
                 currentQuestion += 1
-                savedConstitution = nil
+                selectedAnswer = nil
             } else {
                 completeOnboarding()
             }
