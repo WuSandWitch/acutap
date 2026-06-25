@@ -77,6 +77,16 @@ struct ARAcupointView: View {
     private var isGuided: Bool { activeSession != nil }
     private var launchedModally: Bool { initialSession != nil }
 
+    /// 偵測模式標籤
+    private var modeLabel: String {
+        guard camera.isLive else { return "示意模式" }
+        switch camera.poseDetector.detectionMode {
+        case .fullBody:  return "AR 全身點穴"
+        case .faceOnly:  return "AR 臉部穴位"
+        case .none:      return "AR 待偵測"
+        }
+    }
+
     /// 當前要顯示的穴位
     private var markers: [Acupoint] {
         if let s = activeSession { return s.acupoints }
@@ -221,14 +231,24 @@ struct ARAcupointView: View {
         }
     }
 
-    /// 將穴位投射到螢幕位置（優先使用身體偵測，否則用數學編排）
+    /// 將穴位投射到螢幕位置（智能選擇投影模式）
     private func position(for acupoint: Acupoint, index: Int, total: Int, in size: CGSize) -> CGPoint {
-        // 有偵測到身體 → 投影到真實身體上
-        if let body = camera.poseDetector.detectedBody, body.boundingBox != .zero {
-            return body.project(acupoint.bodyPoint, viewSize: size)
+        guard let body = camera.poseDetector.detectedBody, body.boundingBox != .zero else {
+            return fallbackAnchor(index: index, total: total, in: size)
         }
-        // 無身體 → 回退數學編排
-        return fallbackAnchor(index: index, total: total, in: size)
+
+        switch body.detectionMode {
+        case .fullBody:
+            return body.project(acupoint.bodyPoint, viewSize: size)
+        case .faceOnly:
+            if DetectedBody.isFaceAcupoint(acupoint.bodyPoint),
+               let facePos = body.projectFace(acupoint.bodyPoint, viewSize: size) {
+                return facePos
+            }
+            return fallbackAnchor(index: index, total: total, in: size)
+        case .none:
+            return fallbackAnchor(index: index, total: total, in: size)
+        }
     }
 
     /// 數學編排（無身體偵測時的 fallback）
@@ -244,14 +264,22 @@ struct ARAcupointView: View {
     private var topHUD: some View {
         HStack {
             HStack(spacing: 6) {
-                // 人體偵測狀態
+                // 偵測模式指示
                 if let body = camera.poseDetector.detectedBody, body.boundingBox != .zero {
-                    Image(systemName: "figure.stand")
-                        .font(.caption)
-                        .foregroundStyle(.green)
+                    switch body.detectionMode {
+                    case .fullBody:
+                        Image(systemName: "figure.stand")
+                            .font(.caption).foregroundStyle(.green)
+                    case .faceOnly:
+                        Image(systemName: "face.smiling")
+                            .font(.caption).foregroundStyle(.orange)
+                    case .none:
+                        Image(systemName: "questionmark")
+                            .font(.caption).foregroundStyle(.gray)
+                    }
                 }
 
-                PillTag(text: camera.isLive ? "AR 即時點穴" : "示意模式",
+                PillTag(text: modeLabel,
                         systemImage: "camera.viewfinder", tint: .white)
                     .environment(\.colorScheme, .dark)
                     .background(.ultraThinMaterial, in: Capsule())
