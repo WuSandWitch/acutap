@@ -134,6 +134,20 @@ let bilateralAcupoints: Set<String> = [
 
 // MARK: - 缺失關節警告
 
+/// 左↔右鏡像關節映射
+func mirroredJoint(_ joint: VNHumanBodyPoseObservation.JointName) -> VNHumanBodyPoseObservation.JointName? {
+    let map: [VNHumanBodyPoseObservation.JointName: VNHumanBodyPoseObservation.JointName] = [
+        .leftShoulder: .rightShoulder, .rightShoulder: .leftShoulder,
+        .leftElbow: .rightElbow, .rightElbow: .leftElbow,
+        .leftWrist: .rightWrist, .rightWrist: .leftWrist,
+        .leftHip: .rightHip, .rightHip: .leftHip,
+        .leftKnee: .rightKnee, .rightKnee: .leftKnee,
+        .leftAnkle: .rightAnkle, .rightAnkle: .leftAnkle,
+        .leftEar: .rightEar, .rightEar: .leftEar,
+    ]
+    return map[joint]
+}
+
 /// 判斷某個穴位需要哪些關節才能定位
 func requiredJointsForAcupoint(_ id: String) -> [String] {
     if handAcupointRules[id] != nil { return ["手掌"] }

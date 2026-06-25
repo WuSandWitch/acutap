@@ -324,21 +324,30 @@ struct ARAcupointView: View {
             return
         }
         // 檢查目前 session 的穴位需要的關節
-        var missingSet: Set<String> = []
+        var missingTypes: Set<String> = []
         for point in markers {
             guard let rule = acupointJointRules[point.id] else { continue }
-            // 檢查 proximal 和 distal 關節是否存在
-            let proxExists = body.joints[rule.proximal] != nil
-            let distExists = body.joints[rule.distal] != nil
-            if !proxExists || !distExists {
-                let needed = requiredJointsForAcupoint(point.id)
-                for n in needed { missingSet.insert(n) }
+            // 檢查 proximal/distal — bilateral: 有一邊即可
+            let proxOK = body.joints[rule.proximal] != nil
+            let distOK = body.joints[rule.distal] != nil
+            
+            if !proxOK || !distOK {
+                // 試另一側（mirror joint）
+                let mirrored = mirroredJoint(rule.proximal)
+                let proxMirrorOK = mirrored.map { body.joints[$0] != nil } ?? false
+                let distMirrored = mirroredJoint(rule.distal)
+                let distMirrorOK = distMirrored.map { body.joints[$0] != nil } ?? false
+                
+                if (!proxOK && !proxMirrorOK) || (!distOK && !distMirrorOK) {
+                    let needed = requiredJointsForAcupoint(point.id)
+                    for n in needed { missingTypes.insert(n) }
+                }
             }
         }
-        if missingSet.isEmpty {
+        if missingTypes.isEmpty {
             showJointHint = false
         } else {
-            let parts = missingSet.sorted().joined(separator: "、")
+            let parts = missingTypes.sorted().joined(separator: "、")
             jointHintMessage = "請讓「\(parts)」進入鏡頭範圍"
             showJointHint = true
         }
