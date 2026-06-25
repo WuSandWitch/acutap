@@ -56,8 +56,7 @@ final class AuthService: NSObject {
 
     /// Google Cloud Console → OAuth 2.0 Client ID (iOS type)
     var googleClientID: String {
-        ProcessInfo.processInfo.environment["GOOGLE_CLIENT_ID"]
-            ?? "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+        "988106203094-uu3tbireufumti5ts5jd53kdggh9a8og.apps.googleusercontent.com"
     }
 
     /// 自訂 URL Scheme（需在 Info.plist 註冊）
@@ -109,10 +108,6 @@ final class AuthService: NSObject {
     /// 執行 Google OAuth 2.0 登入
     @MainActor
     func signInWithGoogle() async throws {
-        guard googleClientID != "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" else {
-            throw AuthError.notConfigured
-        }
-
         isLoading = true
         defer { isLoading = false }
 

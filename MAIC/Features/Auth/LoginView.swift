@@ -75,9 +75,6 @@ struct LoginView: View {
                                 try await auth.signInWithGoogle()
                             } catch AuthError.cancelled {
                                 // 使用者取消，不顯示錯誤
-                            } catch AuthError.notConfigured {
-                                errorMessage = "Google OAuth 尚未設定。請設定 GOOGLE_CLIENT_ID。"
-                                showError = true
                             } catch {
                                 errorMessage = error.localizedDescription
                                 showError = true
