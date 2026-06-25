@@ -26,7 +26,7 @@ struct DailyView: View {
                 VStack(spacing: 0) {
                     // Hello + 頭像
                     HStack {
-                        Text("Hello \(env.profile.name)!")
+                        Text("Hello, \(env.profile.name)!")
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.primary)
                         Spacer()
@@ -35,6 +35,7 @@ struct DailyView: View {
                                 .overlay(Text(String(env.profile.name.prefix(1)))
                                     .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
                         }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, Theme.Spacing.l)
                     .padding(.top, Theme.Spacing.m)
