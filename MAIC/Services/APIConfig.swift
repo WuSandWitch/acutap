@@ -1,10 +1,8 @@
 import Foundation
 
 enum APIConfig {
-    // 開發階段先用 localhost，上線後改為正式 domain
     static var baseURL: String {
-        // 從 Info.plist 或環境變數讀取
-        ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:8000"
+        ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://acutap-backend.zudo.cc"
     }
     
     static let apiPrefix = "/api"
