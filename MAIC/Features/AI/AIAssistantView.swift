@@ -41,9 +41,9 @@ final class AssistantModel {
         mode = .select
     }
 
-    // MARK: 由複選推薦 → 串接後端
+    // MARK: 由複選推薦 → 串接後端 + 健康資料
 
-    func recommend() {
+    func recommend(health: VitalSnapshot? = nil) {
         guard !selected.isEmpty else { return }
         let labels = selected.map(\.label).joined(separator: "、")
         messages.append(.init(role: .user, text: "我現在：\(labels)"))
@@ -51,13 +51,14 @@ final class AssistantModel {
         isTyping = true
 
         let symptoms = selected.map { $0.label }
-        let constitution = UserProfile.demo.dominantConstitution.rawValue
 
         Task {
             do {
                 let response = try await SymptomService.shared.analyze(
                     symptoms: symptoms,
-                    constitution: constitution
+                    hrv: health?.hrv, sleepScore: health?.sleepScore,
+                    restingHR: health.flatMap { Int($0.restingHR) },
+                    steps: health.flatMap { Int($0.steps) }
                 )
                 let ids = response.acupoints.map(\.id)
                 let acupoints = MockDataProvider.shared.acupoints(ids: ids)
@@ -91,9 +92,9 @@ final class AssistantModel {
         self.isTyping = false
     }
 
-    // MARK: 自然語言 → 串接後端
+    // MARK: 自然語言 → 串接後端 + 健康資料
 
-    func send(_ text: String? = nil) {
+    func send(_ text: String? = nil, health: VitalSnapshot? = nil) {
         let raw = (text ?? input).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return }
         messages.append(.init(role: .user, text: raw))
@@ -104,7 +105,9 @@ final class AssistantModel {
             do {
                 let response = try await SymptomService.shared.analyze(
                     symptoms: [raw],
-                    constitution: UserProfile.demo.dominantConstitution.rawValue
+                    hrv: health?.hrv, sleepScore: health?.sleepScore,
+                    restingHR: health.flatMap { Int($0.restingHR) },
+                    steps: health.flatMap { Int($0.steps) }
                 )
                 let ids = response.acupoints.map(\.id)
                 let acupoints = MockDataProvider.shared.acupoints(ids: ids)
@@ -271,7 +274,7 @@ struct AIAssistantView: View {
             GlowButton(title: "讓 AI 推薦", systemImage: "sparkles",
                        subtitle: model.selected.isEmpty ? nil : "\(model.selected.count) 項") {
                 focused = false
-                withAnimation(Theme.Motion.smooth) { model.recommend() }
+                withAnimation(Theme.Motion.smooth) { model.recommend(health: env.latestVital()) }
             }
             .opacity(model.selected.isEmpty ? 0.5 : 1)
             .disabled(model.selected.isEmpty)
@@ -325,14 +328,14 @@ struct AIAssistantView: View {
                     .lineLimit(1...4)
                     .focused($focused)
                     .submitLabel(.send)
-                    .onSubmit { model.send() }
+                    .onSubmit { model.send(health: env.latestVital()) }
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(Color(.secondarySystemBackground),
                         in: RoundedRectangle(cornerRadius: 22, style: .continuous))
 
             Button {
-                model.send(); focused = false
+                model.send(health: env.latestVital()); focused = false
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
