@@ -59,9 +59,9 @@ final class AuthService: NSObject {
         "988106203094-uu3tbireufumti5ts5jd53kdggh9a8og.apps.googleusercontent.com"
     }
 
-    /// 自訂 URL Scheme（需在 Info.plist 註冊）
-    private var redirectScheme: String { "acutap" }
-    private var redirectHost: String { "oauth-callback" }
+    /// 自訂 URL Scheme — 使用 REVERSED_CLIENT_ID（Google iOS OAuth 標準）
+    private var redirectScheme: String { "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og" }
+    private var redirectHost: String { "oauth2callback" }
     private var redirectURI: String { "\(redirectScheme)://\(redirectHost)" }
 
     /// 後端 id_token 驗證 endpoint
