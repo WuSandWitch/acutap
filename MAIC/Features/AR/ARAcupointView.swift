@@ -273,7 +273,10 @@ struct ARAcupointView: View {
         // 1. 嘗試 Vision 關節點定位（62 個核心穴精準對位）
         // 2. 臉部穴位用臉部 box
         // 3. 全身 bounding box fallback
-        return body.smartProject(acupoint: acupoint, viewSize: size)
+        var pos = body.smartProject(acupoint: acupoint, viewSize: size)
+        // Vision raw camera 是 unmirrored，前鏡頭 preview 有 mirror → 反轉 X
+        pos.x = size.width - pos.x
+        return pos
     }
 
     /// 數學編排（無身體偵測時的 fallback）
