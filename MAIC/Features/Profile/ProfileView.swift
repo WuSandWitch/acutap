@@ -2,8 +2,10 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var env
+    @State private var auth = AuthService.shared
     @AppStorage("appearance") private var appearance: String = "system"
     @AppStorage("notifications") private var notifications: Bool = true
+    @State private var showingLogoutAlert = false
 
     var body: some View {
         NavigationStack {
@@ -26,14 +28,23 @@ struct ProfileView: View {
                     .padding(.vertical, 4)
                 }
 
-                Section("體質組成") {
-                    ForEach(env.profile.constitution.sorted(by: { $0.value > $1.value }), id: \.key) { (c, v) in
-                        HStack {
-                            Text(c.displayName)
-                            Spacer()
-                            Text("\(Int(v * 100))%")
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
+                Section("體質分析") {
+                    if env.profile.constitution.count == 1 && env.profile.constitution[.balanced] == 1.0 {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("尚無分析資料", systemImage: "clock")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            Text("完成健康資料同步後，AI 將根據您的 HRV、睡眠、心率等數據分析體質傾向。")
+                                .font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 6)
+                    } else {
+                        ForEach(env.profile.constitution.sorted(by: { $0.value > $1.value }), id: \.key) { (c, v) in
+                            HStack {
+                                Text(c.displayName)
+                                Spacer()
+                                Text("\(Int(v * 100))%")
+                                    .foregroundStyle(.secondary).monospacedDigit()
+                            }
                         }
                     }
                 }
@@ -51,9 +62,34 @@ struct ProfileView: View {
                     LabeledContent("版本", value: "1.0.0")
                     LabeledContent("資料來源", value: "WHO標準穴位 + bankroz骨骼定位")
                     LabeledContent("後端", value: "acutap-backend.zudo.cc")
+                    if let email = auth.userEmail {
+                        LabeledContent("帳號", value: email)
+                    }
+                }
+
+                // 登出
+                Section {
+                    Button(role: .destructive) {
+                        showingLogoutAlert = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                            Text("登出")
+                            Spacer()
+                        }
+                    }
                 }
             }
             .navigationTitle("個人")
+            .alert("登出", isPresented: $showingLogoutAlert) {
+                Button("取消", role: .cancel) {}
+                Button("登出", role: .destructive) {
+                    auth.signOut()
+                }
+            } message: {
+                Text("登出後需要重新使用 Google 帳號登入。")
+            }
         }
     }
 }
