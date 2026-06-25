@@ -243,7 +243,7 @@ final class BodyPoseDetector: @unchecked Sendable {
 
             guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
-                                                orientation: .rightMirrored,
+                                                orientation: .up,
                                                 options: [:])
 
             do {
