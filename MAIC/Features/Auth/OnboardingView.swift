@@ -52,7 +52,7 @@ struct OnboardingView: View {
     @State private var errorMessage = ""
     @State private var constitutionScores: [Constitution: Double] = [:]
     @State private var currentQuestion = 0
-    @State private var savedConstitution: (Constitution, Double)?
+    @State private var selectedAnswer: String? = nil
 
     var onComplete: (UserProfile) -> Void
 
@@ -137,7 +137,7 @@ struct OnboardingView: View {
     }
 
     private var nextDisabled: Bool {
-        if step == .constitution { return savedConstitution == nil }
+        if step == .constitution { return selectedAnswer == nil }
         return false
     }
 
@@ -181,22 +181,22 @@ struct OnboardingView: View {
                 .padding(.horizontal, Theme.Spacing.xl)
 
             VStack(spacing: 12) {
-                ForEach(constitutionQuestions[currentQuestion].scores, id: \.answer) { opt in
-                    Button {
-                        selectAnswer(opt.constitution, weight: opt.weight)
-                    } label: {
-                        HStack {
-                            Image(systemName: savedConstitution?.0 == opt.constitution ? "circle.fill" : "circle")
-                                .foregroundStyle(Theme.teal)
-                            Text(opt.answer)
-                                .foregroundStyle(.primary)
-                            Spacer()
+                    ForEach(Array(constitutionQuestions[currentQuestion].scores.enumerated()), id: \.offset) { idx, opt in
+                        Button {
+                            selectAnswer(opt.constitution, weight: opt.weight, answerID: "\(currentQuestion)_\(idx)")
+                        } label: {
+                            HStack {
+                                Image(systemName: selectedAnswer == "\(currentQuestion)_\(idx)" ? "circle.fill" : "circle")
+                                    .foregroundStyle(Theme.teal)
+                                Text(opt.answer)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                         }
-                        .padding()
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                     }
                 }
-            }
             .padding(.horizontal, Theme.Spacing.xl)
 
             if currentQuestion > 0 {
@@ -206,19 +206,15 @@ struct OnboardingView: View {
         }
     }
 
-    private func selectAnswer(_ constitution: Constitution, weight: Double) {
+    private func selectAnswer(_ constitution: Constitution, weight: Double, answerID: String) {
         constitutionScores[constitution] = (constitutionScores[constitution] ?? 0) + weight
-        // 如果選 balanced，不加分（維持現狀）
-        if constitution == .balanced {
-            // 不加分，但記錄選擇
-        }
-        savedConstitution = (constitution, weight)
+        selectedAnswer = answerID
         // 自動跳到下一題
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             if currentQuestion < constitutionQuestions.count - 1 {
                 withAnimation(Theme.Motion.smooth) {
                     currentQuestion += 1
-                    savedConstitution = nil
+                    selectedAnswer = nil
                 }
             } else {
                 completeOnboarding()

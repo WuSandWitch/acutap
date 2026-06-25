@@ -10,10 +10,11 @@ import SwiftUI
 struct ConstitutionTestView: View {
     @State private var currentQuestion = 0
     @State private var constitutionScores: [Constitution: Double] = [:]
-    @State private var savedConstitution: (Constitution, Double)?
+    @State private var selectedAnswer: String? = nil
     @State private var showResult = false
 
     var onComplete: (UserProfile) -> Void
+    var currentName: String = "使用者"
 
     var body: some View {
         NavigationStack {
@@ -45,7 +46,7 @@ struct ConstitutionTestView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { onComplete(UserProfile(
-                        name: "使用者",
+                        name: currentName,
                         birthYear: Calendar.current.component(.year, from: Date()) - 25,
                         constitution: [.balanced: 1.0]
                     ))}
@@ -64,22 +65,22 @@ struct ConstitutionTestView: View {
                 .padding(.horizontal, Theme.Spacing.xl)
 
             VStack(spacing: 12) {
-                ForEach(constitutionQuestions[currentQuestion].scores, id: \.answer) { opt in
+                ForEach(Array(constitutionQuestions[currentQuestion].scores.enumerated()), id: \.offset) { idx, opt in
                     Button {
-                        selectAnswer(opt.constitution, weight: opt.weight)
+                        selectAnswer(opt.constitution, weight: opt.weight, answerID: "\(currentQuestion)_\(idx)")
                     } label: {
                         HStack {
-                            Image(systemName: savedConstitution?.0 == opt.constitution ? "circle.fill" : "circle")
+                            Image(systemName: selectedAnswer == "\(currentQuestion)_\(idx)" ? "circle.fill" : "circle")
                                 .foregroundStyle(Theme.teal)
                             Text(opt.answer)
                                 .foregroundStyle(.primary)
                             Spacer()
-                            if savedConstitution?.0 == opt.constitution {
+                            if selectedAnswer == "\(currentQuestion)_\(idx)" {
                                 Image(systemName: "checkmark").foregroundStyle(Theme.teal)
                             }
                         }
                         .padding()
-                        .background(savedConstitution?.0 == opt.constitution
+                        .background(selectedAnswer == "\(currentQuestion)_\(idx)"
                             ? Theme.teal.opacity(0.1)
                             : Color(.secondarySystemBackground),
                             in: RoundedRectangle(cornerRadius: 12))
@@ -121,7 +122,7 @@ struct ConstitutionTestView: View {
                     ? Dictionary(uniqueKeysWithValues: constitutionScores.map { ($0.key, $0.value / total) })
                     : [.balanced: 1.0]
                 let profile = UserProfile(
-                    name: "使用者",
+                    name: currentName,
                     birthYear: Calendar.current.component(.year, from: Date()) - 25,
                     constitution: normalized
                 )
@@ -131,9 +132,9 @@ struct ConstitutionTestView: View {
         .padding(.horizontal, Theme.Spacing.xl)
     }
 
-    private func selectAnswer(_ constitution: Constitution, weight: Double) {
+    private func selectAnswer(_ constitution: Constitution, weight: Double, answerID: String) {
         constitutionScores[constitution] = (constitutionScores[constitution] ?? 0) + weight
-        savedConstitution = (constitution, weight)
+        selectedAnswer = answerID
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             if currentQuestion < constitutionQuestions.count - 1 {

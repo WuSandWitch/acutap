@@ -4,7 +4,6 @@ struct ProfileView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var auth = AuthService.shared
     @AppStorage("appearance") private var appearance: String = "system"
-    @AppStorage("notifications") private var notifications: Bool = true
     @State private var showingLogoutAlert = false
     @State private var showConstitutionSheet = false
 
@@ -55,7 +54,12 @@ struct ProfileView: View {
                 }
 
                 Section("設定") {
-                    Toggle("每日按摩提醒", isOn: $notifications)
+                    HStack {
+                        Label("每日按摩提醒", systemImage: "bell")
+                        Spacer()
+                        Text("敬請期待")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Picker("外觀", selection: $appearance) {
                         Text("跟隨系統").tag("system")
                         Text("淺色").tag("light")
@@ -96,7 +100,7 @@ struct ProfileView: View {
                 Text("登出後需要重新使用 Google 帳號登入。")
             }
             .sheet(isPresented: $showConstitutionSheet) {
-                ConstitutionTestView { profile in
+                ConstitutionTestView(currentName: env.profile.name) { profile in
                     env.profile = profile
                     showConstitutionSheet = false
                 }
