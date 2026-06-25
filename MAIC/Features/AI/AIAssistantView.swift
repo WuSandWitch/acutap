@@ -41,7 +41,7 @@ final class AssistantModel {
         mode = .select
     }
 
-    // MARK: 由複選推薦
+    // MARK: 由複選推薦 → 串接後端
 
     func recommend() {
         guard !selected.isEmpty else { return }
@@ -50,23 +50,48 @@ final class AssistantModel {
         mode = .chat
         isTyping = true
 
+        let symptoms = selected.map { $0.label }
+        let constitution = UserProfile.demo.dominantConstitution.rawValue
+
+        Task {
+            do {
+                let response = try await SymptomService.shared.analyze(
+                    symptoms: symptoms,
+                    constitution: constitution
+                )
+                let ids = response.acupoints.map(\.id)
+                let acupoints = MockDataProvider.shared.acupoints(ids: ids)
+                let text = response.analysis
+                let session = acupoints.isEmpty ? nil :
+                    PointSession(title: "AI 建議 · 點穴", subtitle: labels, acupoints: acupoints)
+
+                await MainActor.run {
+                    self.messages.append(.init(role: .assistant, text: text, session: session))
+                    self.isTyping = false
+                }
+            } catch {
+                // 後端失敗 → 降級為本地推薦
+                await MainActor.run {
+                    self.fallbackRecommend(from: symptoms, subtitle: labels)
+                }
+            }
+        }
+    }
+
+    private func fallbackRecommend(from symptoms: [String], subtitle: String) {
         var ids: [String] = []
         for intent in selected {
             for id in intent.acupointIDs where !ids.contains(id) { ids.append(id) }
         }
         ids = Array(ids.prefix(6))
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
-            guard let self else { return }
-            let names = self.data.acupoints(ids: ids).map(\.nameZh).joined(separator: "、")
-            let text = "根據你選的狀態，為你推薦這組穴位：\(names)。\n依序按壓、配合深呼吸，點下方按鈕進入 AR 即時點穴。"
-            self.messages.append(.init(role: .assistant, text: text,
-                                       session: self.session(ids: ids, subtitle: labels)))
-            self.isTyping = false
-        }
+        let names = data.acupoints(ids: ids).map(\.nameZh).joined(separator: "、")
+        let text = "根據你選的狀態，為你推薦這組穴位：\(names)。\n依序按壓、配合深呼吸，點下方按鈕進入 AR 即時點穴。"
+        self.messages.append(.init(role: .assistant, text: text,
+                                   session: self.session(ids: ids, subtitle: subtitle)))
+        self.isTyping = false
     }
 
-    // MARK: 自然語言
+    // MARK: 自然語言 → 串接後端
 
     func send(_ text: String? = nil) {
         let raw = (text ?? input).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,12 +99,32 @@ final class AssistantModel {
         messages.append(.init(role: .user, text: raw))
         input = ""
         isTyping = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
-            guard let self else { return }
-            let (reply, ids) = self.match(raw)
-            self.messages.append(.init(role: .assistant, text: reply,
-                                       session: self.session(ids: ids, subtitle: raw)))
-            self.isTyping = false
+
+        Task {
+            do {
+                let response = try await SymptomService.shared.analyze(
+                    symptoms: [raw],
+                    constitution: UserProfile.demo.dominantConstitution.rawValue
+                )
+                let ids = response.acupoints.map(\.id)
+                let acupoints = MockDataProvider.shared.acupoints(ids: ids)
+                let session = acupoints.isEmpty ? nil :
+                    PointSession(title: "AI 建議 · 點穴", subtitle: raw, acupoints: acupoints)
+
+                await MainActor.run {
+                    self.messages.append(.init(role: .assistant, text: response.analysis,
+                                               session: session))
+                    self.isTyping = false
+                }
+            } catch {
+                // 後端失敗 → 降級為本地 keyword matching
+                await MainActor.run {
+                    let (reply, ids) = self.match(raw)
+                    self.messages.append(.init(role: .assistant, text: reply,
+                                               session: self.session(ids: ids, subtitle: raw)))
+                    self.isTyping = false
+                }
+            }
         }
     }
 

@@ -38,19 +38,15 @@ final class MockDataProvider {
     /// 今日健康摘要（取自最新 VitalSnapshot）
     var healthMetrics: [HealthMetric] {
         let v = latestVital
+        let hrvLevel = min(1, max(0, v.hrv / 80))
+        let sleepLevel = min(1, max(0, Double(v.sleepScore) / 100))
+        let hrLevel = 1 - min(1, max(0, (Double(v.restingHR) - 40) / 40))
+        let stepsLevel = min(1, max(0, Double(v.steps) / 10000))
         return [
-            HealthMetric(kind: .hrv, value: Int(v.hrv),
-                         level: min(1, v.hrv / 70),
-                         status: v.hrv >= 50 ? "良好" : "偏低"),
-            HealthMetric(kind: .sleep, value: v.sleepScore,
-                         level: Double(v.sleepScore) / 100,
-                         status: v.sleepScore >= 75 ? "充足" : "不足"),
-            HealthMetric(kind: .restingHR, value: v.restingHR,
-                         level: 1 - min(1, Double(v.restingHR - 50) / 40),
-                         status: v.restingHR <= 65 ? "穩定" : "偏快"),
-            HealthMetric(kind: .steps, value: v.steps,
-                         level: min(1, Double(v.steps) / 10000),
-                         status: v.steps >= 8000 ? "達標" : "再加油")
+            HealthMetric(kind: .hrv, value: Int(v.hrv), level: hrvLevel, status: hrvLevel > 0.6 ? "良好" : hrvLevel > 0.3 ? "一般" : "偏低"),
+            HealthMetric(kind: .sleep, value: v.sleepScore, level: sleepLevel, status: v.sleepScore > 75 ? "良好" : v.sleepScore > 50 ? "一般" : "不足"),
+            HealthMetric(kind: .restingHR, value: v.restingHR, level: hrLevel, status: hrLevel > 0.6 ? "良好" : hrLevel > 0.3 ? "正常" : "偏高"),
+            HealthMetric(kind: .steps, value: v.steps, level: stepsLevel, status: v.steps > 8000 ? "活躍" : v.steps > 5000 ? "適中" : "偏低")
         ]
     }
 

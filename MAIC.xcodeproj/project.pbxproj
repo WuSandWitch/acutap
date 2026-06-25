@@ -398,6 +398,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "穴新達需要使用相機，以 AR 即時將穴位光點疊合在你的身上引導點穴。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "穴新達需要讀取您的健康資料（心率、睡眠、步數），以提供個人化穴位養生建議。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "穴新達會將您的健康指標上傳至後端，以 AI 分析您的體質變化趨勢。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -430,6 +432,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "穴新達需要使用相機，以 AR 即時將穴位光點疊合在你的身上引導點穴。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "穴新達需要讀取您的健康資料（心率、睡眠、步數），以提供個人化穴位養生建議。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "穴新達會將您的健康指標上傳至後端，以 AI 分析您的體質變化趨勢。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

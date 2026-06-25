@@ -18,6 +18,10 @@ struct MAICApp: App {
                 .environment(env)
                 .tint(Theme.teal)
                 .preferredColorScheme(scheme)
+                .task {
+                    // 啟動時初始化 HealthKit + 載入後端資料
+                    await env.initialize()
+                }
         }
     }
 
