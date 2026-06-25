@@ -55,7 +55,7 @@ struct DetectedBody: Equatable {
     /// 當前偵測模式
     var detectionMode: DetectionMode {
         let bodyCount = joints.count
-        if bodyCount >= 6 { return .fullBody }
+        if bodyCount >= 3 { return .fullBody }
         if faceRect != nil { return .faceOnly }
         return .none
     }
@@ -117,6 +117,61 @@ struct DetectedBody: Equatable {
     /// 判斷穴位是否為臉部穴位（Y < 0.15）
     static func isFaceAcupoint(_ bodyPoint: BodyPoint) -> Bool {
         bodyPoint.y < faceYRange.upperBound
+    }
+
+    // MARK: - Vision 關節點定位（取代 bounding box）
+
+    /// 使用 Vision 關節點計算穴位在螢幕上的位置
+    /// 比 bounding box 投影準確，因為適應每個人實際體型
+    func projectUsingJoints(acupointID: String, bodyPoint: BodyPoint, viewSize: CGSize) -> CGPoint? {
+        guard let rule = acupointJointRules[acupointID] else { return nil }
+
+        // 取得 proximal/distal 關節位置
+        guard let pPos = joints[rule.proximal],
+              let dPos = joints[rule.distal] else {
+            // 找不到關節時 fallback
+            return nil
+        }
+
+        // 沿骨骼線性插值
+        let r = CGFloat(rule.ratio)
+        var x = pPos.x + (dPos.x - pPos.x) * r
+        var y = pPos.y + (dPos.y - pPos.y) * r
+
+        // 側向偏移（垂直於骨骼方向）
+        if rule.lateralOffset != 0 {
+            let dx = dPos.x - pPos.x
+            let dy = dPos.y - pPos.y
+            let len = sqrt(dx*dx + dy*dy)
+            if len > 0.001 {
+                let nx = -dy / len  // 垂直向量
+                let ny = dx / len
+                let off = CGFloat(rule.lateralOffset) * 0.15  // 偏移量
+                x += nx * off
+                y += ny * off
+            }
+        }
+
+        return CGPoint(x: x * viewSize.width, y: y * viewSize.height)
+    }
+
+    /// 混合投影：有關節規則就用關節點定位，否則用 bounding box
+    func smartProject(acupoint: Acupoint, viewSize: CGSize) -> CGPoint {
+        // 1. 嘗試關節點定位（最準確）
+        if let pos = projectUsingJoints(acupointID: acupoint.id,
+                                         bodyPoint: acupoint.bodyPoint,
+                                         viewSize: viewSize) {
+            return pos
+        }
+
+        // 2. 臉部穴位用臉部 box
+        if Self.isFaceAcupoint(acupoint.bodyPoint),
+           let facePos = projectFace(acupoint.bodyPoint, viewSize: viewSize) {
+            return facePos
+        }
+
+        // 3. 全身 bounding box（fallback）
+        return project(acupoint.bodyPoint, viewSize: viewSize)
     }
 }
 

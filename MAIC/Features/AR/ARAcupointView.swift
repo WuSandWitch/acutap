@@ -237,18 +237,10 @@ struct ARAcupointView: View {
             return fallbackAnchor(index: index, total: total, in: size)
         }
 
-        switch body.detectionMode {
-        case .fullBody:
-            return body.project(acupoint.bodyPoint, viewSize: size)
-        case .faceOnly:
-            if DetectedBody.isFaceAcupoint(acupoint.bodyPoint),
-               let facePos = body.projectFace(acupoint.bodyPoint, viewSize: size) {
-                return facePos
-            }
-            return fallbackAnchor(index: index, total: total, in: size)
-        case .none:
-            return fallbackAnchor(index: index, total: total, in: size)
-        }
+        // 1. 嘗試 Vision 關節點定位（62 個核心穴精準對位）
+        // 2. 臉部穴位用臉部 box
+        // 3. 全身 bounding box fallback
+        return body.smartProject(acupoint: acupoint, viewSize: size)
     }
 
     /// 數學編排（無身體偵測時的 fallback）
