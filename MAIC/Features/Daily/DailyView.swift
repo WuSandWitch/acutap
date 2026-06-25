@@ -210,6 +210,14 @@ struct DailyView: View {
             }
         }
     }
+
+    // MARK: Load
+
+    private func loadInsights() async {
+        isLoadingInsights = true
+        insights = await env.fetchHealthInsights()
+        isLoadingInsights = false
+    }
 }
 
 // MARK: - Insights Model
