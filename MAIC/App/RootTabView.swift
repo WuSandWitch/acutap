@@ -4,6 +4,7 @@ struct RootTabView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var selection: Tab = .daily
     @State private var auth = AuthService.shared
+    @State private var onboardingAfterLogin = !UserDefaults.standard.bool(forKey: "onboarding_completed")
 
     enum Tab: Hashable { case daily, ar, ai }
 
@@ -11,17 +12,29 @@ struct RootTabView: View {
         Group {
             switch auth.state {
             case .unknown:
-                // 正在檢查 Keychain 中是否有 token
                 ProgressView()
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(.systemBackground))
             case .authenticated:
-                mainTabs
-                    .onAppear { syncGoogleName() }
-                    .task { await env.initialize() }
+                if onboardingAfterLogin {
+                    OnboardingView { profile in
+                        UserDefaults.standard.set(true, forKey: "onboarding_completed")
+                        env.profile = profile
+                        syncGoogleName()
+                        withAnimation(Theme.Motion.smooth) {
+                            onboardingAfterLogin = false
+                        }
+                    }
+                    .environment(env)
+                } else {
+                    mainTabs
+                        .onAppear { syncGoogleName() }
+                        .task { await env.initialize() }
+                }
             case .unauthenticated:
                 LoginView()
+                    .environment(env)
             }
         }
         .environment(\.colorScheme, .dark)
@@ -32,7 +45,7 @@ struct RootTabView: View {
             env.profile = UserProfile(
                 name: name,
                 birthYear: Calendar.current.component(.year, from: Date()) - 25,
-                constitution: [.balanced: 1.0]
+                constitution: env.profile.constitution  // 保留體質資料
             )
         }
     }

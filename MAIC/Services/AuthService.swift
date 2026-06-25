@@ -178,6 +178,8 @@ final class AuthService: NSObject {
         state = .unauthenticated
         userEmail = nil
         userName = nil
+        // 讓下次登入可以重新看 onboarding（截圖用途）
+        UserDefaults.standard.set(false, forKey: "onboarding_completed")
     }
 
     var token: String? {
