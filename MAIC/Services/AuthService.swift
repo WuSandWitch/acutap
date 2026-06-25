@@ -64,9 +64,9 @@ final class AuthService: NSObject {
     private var redirectHost: String { "oauth-callback" }
     private var redirectURI: String { "\(redirectScheme)://\(redirectHost)" }
 
-    /// 後端 token exchange endpoint
-    private var tokenExchangeURL: URL {
-        URL(string: APIConfig.baseURL + "/api/auth/google")!
+    /// 後端 id_token 驗證 endpoint
+    private var verifyTokenURL: URL {
+        URL(string: APIConfig.baseURL + "/api/auth/verify")!
     }
 
     // MARK: State
@@ -111,9 +111,9 @@ final class AuthService: NSObject {
         isLoading = true
         defer { isLoading = false }
 
-        // 1. 建立 OAuth URL
+        // 1. 建立 OAuth URL（請求 id_token，iOS 類型不需要 client_secret）
         let authURL = try buildAuthURL()
-        var code: String?
+        var idToken: String?
 
         // 2. 用 ASWebAuthenticationSession 打開 Google 登入頁
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -132,30 +132,36 @@ final class AuthService: NSObject {
                     return
                 }
 
-                guard let callbackURL = callbackURL,
-                      let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-                      let queryCode = components.queryItems?.first(where: { $0.name == "code" })?.value else {
+                guard let callbackURL = callbackURL else {
                     continuation.resume(throwing: AuthError.noAuthCode)
                     return
                 }
 
-                code = queryCode
-                continuation.resume(returning: ())
+                // iOS OAuth 回來的 id_token 在 URL fragment 裡面（# 後面）
+                let fragment = callbackURL.fragment ?? ""
+                let params = Self.parseFragment(fragment)
+
+                if let token = params["id_token"] {
+                    idToken = token
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: AuthError.noAuthCode)
+                }
             }
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = false
             session.start()
         }
 
-        guard let authCode = code else {
+        guard let token = idToken else {
             throw AuthError.noAuthCode
         }
 
-        // 3. 將 authorization code 送到後端交換 JWT
-        let token = try await exchangeCodeForToken(authCode)
+        // 3. 將 id_token 送到後端驗證，後端回傳我們的 JWT
+        let jwt = try await verifyIdToken(token)
 
         // 4. 存入 Keychain
-        saveToKeychain(value: token, key: tokenKey)
+        saveToKeychain(value: jwt, key: tokenKey)
 
         // 5. 解碼 JWT 取得用戶資訊（不依賴額外 SDK）
         let payload = decodeJWTPayload(token)
@@ -192,11 +198,14 @@ final class AuthService: NSObject {
 
     private func buildAuthURL() throws -> URL {
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        let nonce = UUID().uuidString
         components.queryItems = [
             URLQueryItem(name: "client_id", value: googleClientID),
             URLQueryItem(name: "redirect_uri", value: redirectURI),
-            URLQueryItem(name: "response_type", value: "code"),
+            // iOS 類型：用 id_token + code 混合流程，後端驗證 id_token
+            URLQueryItem(name: "response_type", value: "id_token code"),
             URLQueryItem(name: "scope", value: "openid email profile"),
+            URLQueryItem(name: "nonce", value: nonce),
             URLQueryItem(name: "access_type", value: "offline"),
             URLQueryItem(name: "prompt", value: "consent"),
         ]
@@ -206,19 +215,15 @@ final class AuthService: NSObject {
         return url
     }
 
-    // MARK: Token Exchange (後端)
+    // MARK: Verify id_token via backend
 
-    private func exchangeCodeForToken(_ code: String) async throws -> String {
-        var request = URLRequest(url: tokenExchangeURL)
+    private func verifyIdToken(_ idToken: String) async throws -> String {
+        var request = URLRequest(url: verifyTokenURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let body = [
-            "code": code,
-            "redirect_uri": redirectURI,
-            "client_id": googleClientID,
-        ]
+        let body = ["id_token": idToken, "client_id": googleClientID]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -238,6 +243,21 @@ final class AuthService: NSObject {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let tokenResponse = try decoder.decode(TokenResponse.self, from: data)
         return tokenResponse.accessToken
+    }
+
+    // MARK: URL Fragment Parser
+
+    private static func parseFragment(_ fragment: String) -> [String: String] {
+        var params: [String: String] = [:]
+        for pair in fragment.split(separator: "&") {
+            let kv = pair.split(separator: "=", maxSplits: 1)
+            if kv.count == 2 {
+                let key = String(kv[0])
+                let value = String(kv[1]).removingPercentEncoding ?? String(kv[1])
+                params[key] = value
+            }
+        }
+        return params
     }
 
     // MARK: JWT Decode (簡單解 payload，不驗證簽章)
