@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Vision
 
 // MARK: - 身體區域（自由探索用，由 AI 與 AR 共用）
 
