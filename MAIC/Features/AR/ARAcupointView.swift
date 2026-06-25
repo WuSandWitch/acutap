@@ -92,8 +92,12 @@ struct ARAcupointView: View {
         }
     }
 
-    /// 當前要顯示的穴位
+    /// 當前要顯示的穴位（引導模式只顯示當前）
     private var markers: [Acupoint] {
+        if isGuided {
+            guard let s = activeSession, let c = current else { return [] }
+            return [c]
+        }
         if let s = activeSession { return s.acupoints }
         return env.data.acupoints(ids: selectedRegion.acupointIDs)
     }
@@ -103,8 +107,9 @@ struct ARAcupointView: View {
         return s.acupoints.contains { !DetectedBody.isFaceAcupoint($0.bodyPoint) }
     }
     private var current: Acupoint? {
-        guard isGuided, !markers.isEmpty else { return nil }
-        return markers[min(index, markers.count - 1)]
+        guard isGuided, let s = activeSession, !s.acupoints.isEmpty else { return nil }
+        let i = min(max(index, 0), s.acupoints.count - 1)
+        return s.acupoints[i]
     }
 
     var body: some View {
@@ -496,7 +501,7 @@ struct ARAcupointView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             if let c = current {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Step \(index + 1) / \(markers.count)")
+                    Text("Step \(index + 1) / \(activeSession?.acupoints.count ?? 0)")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Theme.aqua)
                     Spacer()
@@ -525,7 +530,7 @@ struct ARAcupointView: View {
                         .disabled(index == 0)
                     Button(action: advance) {
                         HStack {
-                            Text(index + 1 >= markers.count ? "完成" : "下一穴")
+                            Text(index + 1 >= (activeSession?.acupoints.count ?? 1) ? "完成" : "下一穴")
                             Image(systemName: "chevron.right")
                         }
                         .font(.headline).foregroundStyle(.white)
@@ -640,7 +645,7 @@ struct ARAcupointView: View {
 
     private func advance() {
         guard isGuided else { return }
-        if index + 1 >= markers.count {
+        if index + 1 >= (activeSession?.acupoints.count ?? 1) {
             running = false
             withAnimation(Theme.Motion.smooth) { completed = true }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
