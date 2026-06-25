@@ -323,25 +323,19 @@ struct ARAcupointView: View {
             showJointHint = false
             return
         }
-        // 檢查目前 session 的穴位需要的關節
+        // 只檢查「當前正在按的」穴位（引導模式）或顯示的穴位
+        let targetID = isGuided ? current?.id : nil
         var missingTypes: Set<String> = []
         for point in markers {
+            // 引導模式只檢查當前步驟
+            if let tid = targetID, point.id != tid { continue }
             guard let rule = acupointJointRules[point.id] else { continue }
-            // 檢查 proximal/distal — bilateral: 有一邊即可
-            let proxOK = body.joints[rule.proximal] != nil
-            let distOK = body.joints[rule.distal] != nil
-            
+            // 檢查 bilateral: 任一側存在即可
+            let proxOK = body.joints[rule.proximal] != nil || mirroredJoint(rule.proximal).map { body.joints[$0] != nil } ?? false
+            let distOK = body.joints[rule.distal] != nil || mirroredJoint(rule.distal).map { body.joints[$0] != nil } ?? false
             if !proxOK || !distOK {
-                // 試另一側（mirror joint）
-                let mirrored = mirroredJoint(rule.proximal)
-                let proxMirrorOK = mirrored.map { body.joints[$0] != nil } ?? false
-                let distMirrored = mirroredJoint(rule.distal)
-                let distMirrorOK = distMirrored.map { body.joints[$0] != nil } ?? false
-                
-                if (!proxOK && !proxMirrorOK) || (!distOK && !distMirrorOK) {
-                    let needed = requiredJointsForAcupoint(point.id)
-                    for n in needed { missingTypes.insert(n) }
-                }
+                let needed = requiredJointsForAcupoint(point.id)
+                for n in needed { missingTypes.insert(n) }
             }
         }
         if missingTypes.isEmpty {

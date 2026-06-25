@@ -130,9 +130,14 @@ struct DetectedBody: Equatable {
     func projectUsingJoints(acupointID: String, bodyPoint: BodyPoint, viewSize: CGSize) -> CGPoint? {
         guard let rule = acupointJointRules[acupointID] else { return nil }
 
-        // 取得 proximal/distal 關節位置
-        guard let pPos = joints[rule.proximal],
-              let dPos = joints[rule.distal] else {
+        // 取得 proximal/distal 關節位置（嘗試 mirror 另一側）
+        func jointPos(_ joint: VNHumanBodyPoseObservation.JointName) -> CGPoint? {
+            if let p = joints[joint] { return p }
+            return mirroredJoint(joint).flatMap { joints[$0] }
+        }
+
+        guard let pPos = jointPos(rule.proximal),
+              let dPos = jointPos(rule.distal) else {
             // 找不到關節時 fallback
             return nil
         }
