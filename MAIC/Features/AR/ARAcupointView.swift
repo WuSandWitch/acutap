@@ -277,9 +277,9 @@ struct ARAcupointView: View {
         // 2. 臉部穴位用臉部 box
         // 3. 全身 bounding box fallback
         var pos = body.smartProject(acupoint: acupoint, viewSize: size)
-        // 前鏡頭 raw buffer 含 mirror + portrait rotation
-        // Vision 用 .up → X 需要鏡像（left↔right）
+        // Vision buffer 需要 180° 翻轉才會對齊畫面
         pos.x = size.width - pos.x
+        pos.y = size.height - pos.y
         return pos
     }
 
@@ -313,7 +313,7 @@ struct ARAcupointView: View {
         for (joint, label) in jointLabels {
             if let pt = body.joints[joint] {
                 let x = (1.0 - pt.x) * size.width
-                let y = pt.y * size.height
+                let y = (1.0 - pt.y) * size.height
                 dots[label] = CGPoint(x: x, y: y)
             }
         }
@@ -322,7 +322,7 @@ struct ARAcupointView: View {
         var faceRect: CGRect?
         if let fr = body.faceRect {
             let x = (1.0 - fr.minX) * size.width
-            let y = fr.minY * size.height
+            let y = (1.0 - fr.minY) * size.height
             let w = fr.width * size.width
             let h = fr.height * size.height
             faceRect = CGRect(x: x, y: y, width: w, height: h)
@@ -358,7 +358,7 @@ struct ARAcupointView: View {
                     ForEach(Array(leftHand.keys), id: \.rawValue) { j in
                         if let pt = leftHand[j] {
                             let x = (1.0 - pt.x) * size.width
-                            let y = pt.y * size.height
+                            let y = (1.0 - pt.y) * size.height
                             Circle().fill(Color.cyan.opacity(0.8))
                                 .frame(width: 6, height: 6)
                                 .position(x: x, y: y)
@@ -369,7 +369,7 @@ struct ARAcupointView: View {
                     ForEach(Array(rightHand.keys), id: \.rawValue) { j in
                         if let pt = rightHand[j] {
                             let x = (1.0 - pt.x) * size.width
-                            let y = pt.y * size.height
+                            let y = (1.0 - pt.y) * size.height
                             Circle().fill(Color.green.opacity(0.8))
                                 .frame(width: 6, height: 6)
                                 .position(x: x, y: y)
