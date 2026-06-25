@@ -186,7 +186,9 @@ struct ARAcupointView: View {
 
     private func meridianPath(in size: CGSize) -> some View {
         Path { p in
-            let pts = markers.indices.map { anchor($0, markers.count, in: size) }
+            let pts = markers.enumerated().map { (i, point) in
+                position(for: point, index: i, total: markers.count, in: size)
+            }
             guard let first = pts.first else { return }
             p.move(to: first)
             for pt in pts.dropFirst() { p.addLine(to: pt) }
@@ -211,7 +213,7 @@ struct ARAcupointView: View {
                     .background(.ultraThinMaterial, in: Capsule())
                     .opacity(isGuided && !isCurrent ? 0.45 : 1)
             }
-            .position(anchor(i, markers.count, in: size))
+            .position(position(for: point, index: i, total: markers.count, in: size))
             .scaleEffect(appeared ? 1 : 0.3)
             .opacity(appeared ? 1 : 0)
             .animation(Theme.Motion.bouncy.delay(Double(i) * 0.08), value: appeared)
@@ -219,8 +221,18 @@ struct ARAcupointView: View {
         }
     }
 
-    /// 將穴位沿中軸柔和編排（圍繞對齊框）
-    private func anchor(_ i: Int, _ n: Int, in size: CGSize) -> CGPoint {
+    /// 將穴位投射到螢幕位置（優先使用身體偵測，否則用數學編排）
+    private func position(for acupoint: Acupoint, index: Int, total: Int, in size: CGSize) -> CGPoint {
+        // 有偵測到身體 → 投影到真實身體上
+        if let body = camera.poseDetector.detectedBody, body.boundingBox != .zero {
+            return body.project(acupoint.bodyPoint, viewSize: size)
+        }
+        // 無身體 → 回退數學編排
+        return fallbackAnchor(index: index, total: total, in: size)
+    }
+
+    /// 數學編排（無身體偵測時的 fallback）
+    private func fallbackAnchor(index i: Int, total n: Int, in size: CGSize) -> CGPoint {
         let t = n <= 1 ? 0.5 : Double(i) / Double(n - 1)
         let y = 0.26 + t * 0.5
         let x = 0.5 + sin(t * .pi * 2) * 0.17
@@ -231,10 +243,19 @@ struct ARAcupointView: View {
 
     private var topHUD: some View {
         HStack {
-            PillTag(text: camera.isLive ? "AR 即時點穴" : "示意模式",
-                    systemImage: "camera.viewfinder", tint: .white)
-                .environment(\.colorScheme, .dark)
-                .background(.ultraThinMaterial, in: Capsule())
+            HStack(spacing: 6) {
+                // 人體偵測狀態
+                if let body = camera.poseDetector.detectedBody, body.boundingBox != .zero {
+                    Image(systemName: "figure.stand")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+
+                PillTag(text: camera.isLive ? "AR 即時點穴" : "示意模式",
+                        systemImage: "camera.viewfinder", tint: .white)
+                    .environment(\.colorScheme, .dark)
+                    .background(.ultraThinMaterial, in: Capsule())
+            }
 
             Spacer()
 

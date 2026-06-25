@@ -1,13 +1,23 @@
+//
+//  CameraPreview.swift
+//  MAIC
+//
+//  Created by Luis on 2026/5/30.
+//
+
 import SwiftUI
 import AVFoundation
 
-/// 前鏡頭擷取控制器（AR 點穴用）
+/// 前鏡頭擷取控制器（AR 點穴用 + 人體姿勢偵測）
 @Observable
-final class CameraController {
+final class CameraController: NSObject {
     enum Status { case idle, running, denied, unavailable }
 
     let session = AVCaptureSession()
     var status: Status = .idle
+
+    /// 人體姿勢偵測器
+    let poseDetector = BodyPoseDetector()
 
     private let queue = DispatchQueue(label: "acutap.camera.session")
     private var configured = false
@@ -37,6 +47,8 @@ final class CameraController {
             if !self.configured {
                 self.session.beginConfiguration()
                 self.session.sessionPreset = .high
+
+                // — 相機輸入 —
                 guard let device = AVCaptureDevice.default(.builtInWideAngleCamera,
                                                            for: .video, position: .front),
                       let input = try? AVCaptureDeviceInput(device: device),
@@ -46,6 +58,26 @@ final class CameraController {
                     return
                 }
                 self.session.addInput(input)
+
+                // — 影片資料輸出（給 Vision 做人體偵測）—
+                let videoOutput = AVCaptureVideoDataOutput()
+                videoOutput.videoSettings = [
+                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+                ]
+                videoOutput.setSampleBufferDelegate(self, queue: self.visionQueue)
+                videoOutput.alwaysDiscardsLateVideoFrames = true
+                if self.session.canAddOutput(videoOutput) {
+                    self.session.addOutput(videoOutput)
+                }
+
+                // — 方向校正（前鏡頭要 mirror）—
+                if let connection = videoOutput.connection(with: .video) {
+                    if connection.isVideoMirroringSupported { connection.isVideoMirrored = true }
+                    if connection.isVideoOrientationSupported {
+                        connection.videoOrientation = .portrait
+                    }
+                }
+
                 self.session.commitConfiguration()
                 self.configured = true
             }
@@ -60,7 +92,24 @@ final class CameraController {
             self.session.stopRunning()
         }
     }
+
+    // MARK: - Vision 處理佇列
+
+    private let visionQueue = DispatchQueue(label: "acutap.vision.output",
+                                            qos: .userInitiated)
 }
+
+// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+
+extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(_ output: AVCaptureOutput,
+                       didOutput sampleBuffer: CMSampleBuffer,
+                       from connection: AVCaptureConnection) {
+        poseDetector.processFrame(sampleBuffer)
+    }
+}
+
+// MARK: - SwiftUI 預覽 Layer
 
 /// 將 AVCaptureSession 餵給一個 AVCaptureVideoPreviewLayer
 struct CameraPreview: UIViewRepresentable {
@@ -70,6 +119,10 @@ struct CameraPreview: UIViewRepresentable {
         let view = PreviewUIView()
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
+        // 前鏡頭要 mirror
+        if view.previewLayer.connection?.isVideoMirroringSupported == true {
+            view.previewLayer.connection?.isVideoMirrored = true
+        }
         return view
     }
 
