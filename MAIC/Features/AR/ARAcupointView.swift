@@ -68,7 +68,9 @@ struct ARAcupointView: View {
     @State private var scan = false
     @State private var appeared = false
     @State private var showFaceHint = false
-    @State private var showDebugJoints = true
+    @State private var showJointHint = false
+    @State private var jointHintMessage = ""
+    @State private var showDebugJoints = false
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -147,6 +149,24 @@ struct ARAcupointView: View {
                 .padding(.bottom, 100)
             }
 
+            // Joint 提示
+            if showJointHint && !showFaceHint {
+                VStack(spacing: 6) {
+                    Image(systemName: "figure.stand")
+                        .font(.title2)
+                    Text(jointHintMessage)
+                        .font(.subheadline.weight(.medium))
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(.white)
+                .padding(16)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .environment(\.colorScheme, .dark)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .frame(maxHeight: .infinity, alignment: .center)
+                .padding(.bottom, 100)
+            }
+
             if completed { completionOverlay }
         }
         .background(Color.black)
@@ -167,6 +187,11 @@ struct ARAcupointView: View {
             } else {
                 withAnimation { showFaceHint = false }
             }
+            // 檢查缺少關節
+            updateJointHint()
+        }
+        .onChange(of: camera.poseDetector.detectedBody) { _, _ in
+            updateJointHint()
         }
     }
 
@@ -288,6 +313,35 @@ struct ARAcupointView: View {
         let y = 0.26 + t * 0.5
         let x = 0.5 + sin(t * .pi * 2) * 0.17
         return CGPoint(x: x * size.width, y: y * size.height)
+    }
+
+    // MARK: 缺少關節提示
+
+    private func updateJointHint() {
+        guard let body = camera.poseDetector.detectedBody,
+              body.detectionMode != .none else {
+            showJointHint = false
+            return
+        }
+        // 檢查目前 session 的穴位需要的關節
+        var missingSet: Set<String> = []
+        for point in markers {
+            guard let rule = acupointJointRules[point.id] else { continue }
+            // 檢查 proximal 和 distal 關節是否存在
+            let proxExists = body.joints[rule.proximal] != nil
+            let distExists = body.joints[rule.distal] != nil
+            if !proxExists || !distExists {
+                let needed = requiredJointsForAcupoint(point.id)
+                for n in needed { missingSet.insert(n) }
+            }
+        }
+        if missingSet.isEmpty {
+            showJointHint = false
+        } else {
+            let parts = missingSet.sorted().joined(separator: "、")
+            jointHintMessage = "請讓「\(parts)」進入鏡頭範圍"
+            showJointHint = true
+        }
     }
 
     // MARK: Debug — 顯示 Vision 關節點
