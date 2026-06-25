@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootTabView: View {
+    @Environment(AppEnvironment.self) private var env
     @State private var selection: Tab = .daily
     @State private var auth = AuthService.shared
 
@@ -17,11 +18,23 @@ struct RootTabView: View {
                     .background(Color(.systemBackground))
             case .authenticated:
                 mainTabs
+                    .onAppear { syncGoogleName() }
+                    .task { await env.initialize() }
             case .unauthenticated:
                 LoginView()
             }
         }
         .environment(\.colorScheme, .dark)
+    }
+
+    private func syncGoogleName() {
+        if let name = auth.userName, !name.isEmpty {
+            env.profile = UserProfile(
+                name: name,
+                birthYear: Calendar.current.component(.year, from: Date()) - 25,
+                constitution: [.balanced: 1.0]
+            )
+        }
     }
 
     private var mainTabs: some View {

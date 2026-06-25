@@ -16,16 +16,8 @@ struct MAICApp: App {
     var body: some Scene {
         WindowGroup {
             if showOnboarding {
-                OnboardingView { userName in
-                    // 儲存使用者名稱
-                    UserDefaults.standard.set(userName, forKey: "user_name")
+                OnboardingView {
                     UserDefaults.standard.set(true, forKey: "onboarding_completed")
-                    // 更新 AppEnvironment profile
-                    env.profile = UserProfile(
-                        name: userName,
-                        birthYear: Calendar.current.component(.year, from: Date()) - 25,
-                        constitution: [.balanced: 1.0]
-                    )
                     withAnimation(.easeInOut(duration: 0.4)) {
                         showOnboarding = false
                     }
@@ -37,9 +29,6 @@ struct MAICApp: App {
                     .environment(env)
                     .tint(Theme.teal)
                     .preferredColorScheme(scheme)
-                    .task {
-                        await env.initialize()
-                    }
             }
         }
     }

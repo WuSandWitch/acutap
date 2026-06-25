@@ -9,7 +9,11 @@ final class AppEnvironment {
     let data = MockDataProvider.shared
 
     // MARK: - State
-    var profile: UserProfile = .demo
+    var profile: UserProfile = UserProfile(
+        name: AuthService.shared.userName ?? AuthService.shared.userEmail ?? "使用者",
+        birthYear: Calendar.current.component(.year, from: Date()) - 25,
+        constitution: [.balanced: 1.0]
+    )
     var todaysPrescription: Prescription
     var practiceHistory: [PointSession] = []
 
