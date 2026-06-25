@@ -2,19 +2,19 @@
 //  AuthService.swift
 //  MAIC
 //
-//  Google OAuth 2.0 (via ASWebAuthenticationSession) + Keychain token 管理
-//  不需額外 SDK，純 iOS 內建框架
+//  Google OAuth 2.0 (Authorization Code + PKCE) + Keychain token 管理
+//  不需 client_secret — iOS client type 用 PKCE 驗證
 //
 
 import Foundation
 import AuthenticationServices
 import Security
-import LocalAuthentication
+import CryptoKit
 
 // MARK: - Auth 狀態
 
 enum AuthState: Equatable {
-    case unknown       // 還沒檢查
+    case unknown
     case authenticated(token: String)
     case unauthenticated
 
@@ -30,19 +30,26 @@ enum AuthError: LocalizedError {
     case cancelled
     case noAuthCode
     case tokenExchangeFailed(String)
-    case noRefreshToken
     case keychainError(OSStatus)
-    case notConfigured
 
     var errorDescription: String? {
         switch self {
         case .cancelled: return "登入已取消"
         case .noAuthCode: return "未取得授權碼"
         case .tokenExchangeFailed(let msg): return "Token 交換失敗: \(msg)"
-        case .noRefreshToken: return "無 refresh token"
         case .keychainError(let status): return "鑰匙圈錯誤: \(status)"
-        case .notConfigured: return "Google OAuth 尚未設定"
         }
+    }
+}
+
+// MARK: - Data Extension (base64url)
+
+extension Data {
+    func base64URLEncodedString() -> String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 
@@ -52,14 +59,10 @@ enum AuthError: LocalizedError {
 final class AuthService: NSObject {
     static let shared = AuthService()
 
-    // MARK: 設定（請填入你的值）
+    private let googleClientID = "988106203094-uu3tbireufumti5ts5jd53kdggh9a8og.apps.googleusercontent.com"
+    private let redirectURI = "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og:/oauth2callback"
+    private let callbackScheme = "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og"
 
-    /// Google Cloud Console → OAuth 2.0 Client ID (iOS type)
-    var googleClientID: String {
-        "988106203094-uu3tbireufumti5ts5jd53kdggh9a8og.apps.googleusercontent.com"
-    }
-
-    /// 後端 id_token 驗證 endpoint
     private var verifyTokenURL: URL {
         URL(string: APIConfig.baseURL + "/api/auth/verify")!
     }
@@ -71,6 +74,19 @@ final class AuthService: NSObject {
     private(set) var userEmail: String?
     private(set) var userName: String?
 
+    // MARK: PKCE
+
+    private var codeVerifier = ""
+    private var codeChallenge = ""
+
+    private func generatePKCE() {
+        var buffer = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+        codeVerifier = Data(buffer).base64URLEncodedString()
+        let hash = SHA256.hash(data: Data(codeVerifier.utf8))
+        codeChallenge = Data(hash).base64URLEncodedString()
+    }
+
     // MARK: Keychain Keys
 
     private let keychainService = "com.wusandwitch.acutap.auth"
@@ -78,43 +94,39 @@ final class AuthService: NSObject {
     private let emailKey = "auth_email"
     private let nameKey = "auth_name"
 
-    // MARK: - 初始化
+    // MARK: Init
 
     override private init() {
         super.init()
-        // 啟動時嘗試從 Keychain 載入 token
         loadFromKeychain()
     }
 
-    /// 從 Keychain 載入已存 token
     private func loadFromKeychain() {
         if let token = readFromKeychain(key: tokenKey),
            let email = readFromKeychain(key: emailKey) {
-            self.state = .authenticated(token: token)
-            self.userEmail = email
-            self.userName = readFromKeychain(key: nameKey)
+            state = .authenticated(token: token)
+            userEmail = email
+            userName = readFromKeychain(key: nameKey)
         } else {
-            self.state = .unauthenticated
+            state = .unauthenticated
         }
     }
 
-    // MARK: - Google 登入
+    // MARK: Google Sign-In (Authorization Code + PKCE)
 
-    /// 執行 Google OAuth 2.0 登入
     @MainActor
     func signInWithGoogle() async throws {
         isLoading = true
         defer { isLoading = false }
 
-        // 1. 建立 OAuth URL（請求 id_token，iOS 類型不需要 client_secret）
+        generatePKCE()
         let authURL = try buildAuthURL()
-        var idToken: String?
+        var authCode = ""
 
-        // 2. 用 ASWebAuthenticationSession 打開 Google 登入頁
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let session = ASWebAuthenticationSession(
                 url: authURL,
-                callbackURLScheme: "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og"
+                callbackURLScheme: callbackScheme
             ) { callbackURL, error in
                 if let error = error {
                     let nsError = error as NSError
@@ -127,39 +139,27 @@ final class AuthService: NSObject {
                     return
                 }
 
-                guard let callbackURL = callbackURL else {
+                guard let callbackURL = callbackURL,
+                      let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+                      let code = components.queryItems?.first(where: { $0.name == "code" })?.value else {
                     continuation.resume(throwing: AuthError.noAuthCode)
                     return
                 }
 
-                // iOS OAuth 回來的 id_token 在 URL fragment 裡面（# 後面）
-                let fragment = callbackURL.fragment ?? ""
-                let params = Self.parseFragment(fragment)
-
-                if let token = params["id_token"] {
-                    idToken = token
-                    continuation.resume(returning: ())
-                } else {
-                    continuation.resume(throwing: AuthError.noAuthCode)
-                }
+                authCode = code
+                continuation.resume(returning: ())
             }
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = false
             session.start()
         }
 
-        guard let token = idToken else {
-            throw AuthError.noAuthCode
-        }
-
-        // 3. 將 id_token 送到後端驗證，後端回傳我們的 JWT
-        let jwt = try await verifyIdToken(token)
-
-        // 4. 存入 Keychain
+        // 後端驗證 code + PKCE verifier → 取得 JWT
+        let jwt = try await verifyCode(authCode)
         saveToKeychain(value: jwt, key: tokenKey)
 
-        // 5. 解碼 JWT 取得用戶資訊（不依賴額外 SDK）
-        let payload = decodeJWTPayload(token)
+        // 從 JWT payload 讀用戶資訊
+        let payload = decodeJWTPayload(jwt)
         if let email = payload["email"] as? String {
             userEmail = email
             saveToKeychain(value: email, key: emailKey)
@@ -168,59 +168,58 @@ final class AuthService: NSObject {
             userName = name
             saveToKeychain(value: name, key: nameKey)
         }
-
-        state = .authenticated(token: token)
+        state = .authenticated(token: jwt)
     }
 
-    // MARK: 登出
-
     func signOut() {
-        clearKeychain()
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                     kSecAttrService as String: keychainService]
+        SecItemDelete(query as CFDictionary)
         state = .unauthenticated
         userEmail = nil
         userName = nil
     }
 
-    // MARK: - API Token Helper
-
-    /// 目前 JWT token（用於 API 請求的 Authorization header）
     var token: String? {
         if case .authenticated(let t) = state { return t }
         return nil
     }
 
-    // MARK: - Private: OAuth URL
+    // MARK: OAuth URL
 
     private func buildAuthURL() throws -> URL {
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: googleClientID),
-            // iOS 類型 redirect_uri = REVERSED_CLIENT_ID 格式
-            URLQueryItem(name: "redirect_uri",
-                         value: "com.googleusercontent.apps.988106203094-uu3tbireufumti5ts5jd53kdggh9a8og:/oauth2callback"),
-            URLQueryItem(name: "response_type", value: "id_token"),
+            URLQueryItem(name: "redirect_uri", value: redirectURI),
+            URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: "openid email profile"),
-            URLQueryItem(name: "nonce", value: UUID().uuidString),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "code_challenge", value: codeChallenge),
         ]
         guard let url = components.url else {
-            throw AuthError.notConfigured
+            throw AuthError.noAuthCode
         }
         return url
     }
 
-    // MARK: Verify id_token via backend
+    // MARK: Backend Code Verification (PKCE)
 
-    private func verifyIdToken(_ idToken: String) async throws -> String {
+    private func verifyCode(_ code: String) async throws -> String {
         var request = URLRequest(url: verifyTokenURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let body = ["id_token": idToken, "client_id": googleClientID]
+        let body: [String: String] = [
+            "code": code,
+            "code_verifier": codeVerifier,
+            "client_id": googleClientID,
+            "redirect_uri": redirectURI,
+        ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
             let msg = String(data: data, encoding: .utf8) ?? "Unknown"
@@ -231,41 +230,20 @@ final class AuthService: NSObject {
             let accessToken: String
             let tokenType: String?
         }
-
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        let tokenResponse = try decoder.decode(TokenResponse.self, from: data)
-        return tokenResponse.accessToken
+        return try decoder.decode(TokenResponse.self, from: data).accessToken
     }
 
-    // MARK: URL Fragment Parser
-
-    private static func parseFragment(_ fragment: String) -> [String: String] {
-        var params: [String: String] = [:]
-        for pair in fragment.split(separator: "&") {
-            let kv = pair.split(separator: "=", maxSplits: 1)
-            if kv.count == 2 {
-                let key = String(kv[0])
-                let value = String(kv[1]).removingPercentEncoding ?? String(kv[1])
-                params[key] = value
-            }
-        }
-        return params
-    }
-
-    // MARK: JWT Decode (簡單解 payload，不驗證簽章)
+    // MARK: JWT Decode (不驗證簽章)
 
     private func decodeJWTPayload(_ token: String) -> [String: Any] {
         let parts = token.split(separator: ".")
         guard parts.count >= 2 else { return [:] }
-
-        // Base64url decode payload
         var base64 = String(parts[1])
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-        // Pad with =
         while base64.count % 4 != 0 { base64 += "=" }
-
         guard let data = Data(base64Encoded: base64),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return [:]
@@ -273,56 +251,34 @@ final class AuthService: NSObject {
         return json
     }
 
-    // MARK: - Keychain
+    // MARK: Keychain
 
     private func saveToKeychain(value: String, key: String) {
         guard let data = value.data(using: .utf8) else { return }
-
-        // 先刪除舊值
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: key,
-        ]
+        let deleteQuery: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                           kSecAttrService as String: keychainService,
+                                           kSecAttrAccount as String: key]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        // 寫入新值
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        ]
+        let addQuery: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                        kSecAttrService as String: keychainService,
+                                        kSecAttrAccount as String: key,
+                                        kSecValueData as String: data,
+                                        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
         SecItemAdd(addQuery as CFDictionary, nil)
     }
 
     private func readFromKeychain(key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                     kSecAttrService as String: keychainService,
+                                     kSecAttrAccount as String: key,
+                                     kSecReturnData as String: true,
+                                     kSecMatchLimit as String: kSecMatchLimitOne]
         var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-
-        guard status == errSecSuccess,
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data,
-              let value = String(data: data, encoding: .utf8) else {
-            return nil
-        }
+              let value = String(data: data, encoding: .utf8) else { return nil }
         return value
-    }
-
-    private func clearKeychain() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-        ]
-        SecItemDelete(query as CFDictionary)
     }
 }
 
@@ -330,7 +286,6 @@ final class AuthService: NSObject {
 
 extension AuthService: ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        // 用最簡單的方式取得 key window
         for scene in UIApplication.shared.connectedScenes {
             if let windowScene = scene as? UIWindowScene,
                let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
