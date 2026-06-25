@@ -272,19 +272,31 @@ struct ARAcupointView: View {
     // MARK: 穴位光點
 
     private func markerOverlay(in size: CGSize) -> some View {
-        ForEach(Array(markers.enumerated()), id: \.element.id) { i, point in
+        // 展開雙側穴位：每個穴位變成 1-2 個位置
+        let markers2: [(id: String, name: String, pos: CGPoint, isCurrent: Bool)] = markers.enumerated().flatMap { i, point in
             let isCurrent = isGuided && point.id == current?.id
+            let pos = position(for: point, index: i, total: markers.count, in: size)
+            var pts = [(point.id, point.nameZh, pos, isCurrent)]
+            // 雙側穴位：左右各一顆
+            if bilateralAcupoints.contains(point.id) {
+                let mirrored = CGPoint(x: size.width - pos.x, y: pos.y)
+                pts.append((point.id + "_R", point.nameZh, mirrored, isCurrent))
+            }
+            return pts
+        }
+
+        return ForEach(markers2, id: \.id) { _, name, pos, isCurrent in
             VStack(spacing: 6) {
                 BreathingDot(size: isCurrent ? 34 : 22, labelInitial: nil)
                     .scaleEffect(isCurrent ? 1.0 : 0.9)
-                Text(point.nameZh)
+                Text(name)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(.ultraThinMaterial, in: Capsule())
                     .opacity(isGuided && !isCurrent ? 0.45 : 1)
             }
-            .position(position(for: point, index: i, total: markers.count, in: size))
+            .position(pos)
             .scaleEffect(appeared ? 1 : 0.3)
             .opacity(appeared ? 1 : 0)
             .animation(Theme.Motion.bouncy.delay(Double(i) * 0.08), value: appeared)

@@ -16,8 +16,9 @@ struct MAICApp: App {
     var body: some Scene {
         WindowGroup {
             if showOnboarding {
-                OnboardingView {
+                OnboardingView { profile in
                     UserDefaults.standard.set(true, forKey: "onboarding_completed")
+                    env.profile = profile
                     withAnimation(.easeInOut(duration: 0.4)) {
                         showOnboarding = false
                     }
