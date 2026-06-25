@@ -162,6 +162,33 @@ final class AppEnvironment {
         practiceHistory.insert(session, at: 0)
         if practiceHistory.count > 12 { practiceHistory.removeLast() }
     }
+
+    // MARK: - 🎴 看看狀態吧
+
+    func fetchHealthInsights() async -> HealthInsights? {
+        let vital = latestVital()
+        let dominant = profile.dominantConstitution
+        let term = currentSolarTerm
+
+        let body: [String: Any] = [
+            "hrv": vital.hrv as Any,
+            "sleepScore": vital.sleepScore as Any,
+            "restingHR": vital.restingHR as Any,
+            "steps": vital.steps as Any,
+            "constitution": dominant.displayName,
+            "constitutionScore": profile.constitution[dominant] ?? 0,
+            "solarTerm": term?.name ?? "",
+            "solarTermAdvice": term?.advice ?? "",
+        ]
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: body)
+            return try await api.post(.healthInsights, jsonData: data)
+        } catch {
+            print("[AppEnv] Health insights failed: \(error)")
+            return nil
+        }
+    }
 }
 
 // MARK: - Backend Response Models (蛇形→駝峰)

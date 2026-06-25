@@ -19,7 +19,8 @@ enum APIConfig {
         case acupoint(id: String)
         case meridians
         case prescription
-        
+        case healthInsights
+
         var path: String {
             switch self {
             case .symptomAnalyze: return "/api/symptom-analyze"
@@ -33,6 +34,7 @@ enum APIConfig {
             case .acupoint(let id): return "/api/acupoints/\(id)"
             case .meridians: return "/api/meridians"
             case .prescription: return "/api/prescription"
+            case .healthInsights: return "/api/health/insights"
             }
         }
         

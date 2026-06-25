@@ -1,21 +1,24 @@
+//
+//  DailyView.swift
+//  MAIC
+//
+
 import SwiftUI
-import Charts
 
 struct DailyView: View {
     var goToAR: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
     @State private var arSession: PointSession?
-    @State private var showAIAnalysis = false
+    @State private var insights: HealthInsights?
+    @State private var isLoadingInsights = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     prescriptionHero
-                    healthMetricsRow
-                    if !(env.healthMetrics.isEmpty) { weeklyTrend }
-                    aiRecommendation
+                    statusCard    // ← 取代舊的健康卡片+趨勢+AI
                 }
                 .padding(.horizontal, Theme.Spacing.l)
                 .padding(.top, Theme.Spacing.m)
@@ -26,10 +29,7 @@ struct DailyView: View {
             .fullScreenCover(item: $arSession) { session in
                 ARAcupointView(session: session).environment(env)
             }
-            .sheet(isPresented: $showAIAnalysis) {
-                AIAssistantView()
-                    .environment(env)
-            }
+            .task { await loadInsights() }
         }
     }
 
@@ -37,8 +37,7 @@ struct DailyView: View {
         ZStack {
             Color(.systemBackground)
             Theme.softBrandGradient
-                .frame(height: 280)
-                .frame(maxHeight: .infinity, alignment: .top)
+                .frame(height: 280).frame(maxHeight: .infinity, alignment: .top)
                 .ignoresSafeArea()
         }
     }
@@ -51,30 +50,24 @@ struct DailyView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("今日點穴")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.9))
                     Text(p.title)
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 30, weight: .bold)).foregroundStyle(.white)
                     Text(p.rationale)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.9))
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.9))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                // 頭像右上角
                 NavigationLink {
                     ProfileView()
                 } label: {
-                    Circle().fill(Theme.brandGradient)
-                        .frame(width: 42, height: 42)
+                    Circle().fill(Theme.brandGradient).frame(width: 42, height: 42)
                         .overlay(Text(String(env.profile.name.prefix(1)))
                             .font(.headline).foregroundStyle(.white))
                         .shadow(color: .white.opacity(0.3), radius: 8, y: 3)
                 }
             }
 
-            // 穴位標籤
             HStack(spacing: 6) {
                 ForEach(p.acupoints) { a in
                     Text(a.nameZh)
@@ -85,7 +78,6 @@ struct DailyView: View {
                 }
             }
 
-            // AR 按鈕
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 arSession = env.dailySession
@@ -94,12 +86,10 @@ struct DailyView: View {
                     Image(systemName: "camera.viewfinder")
                     Text("開始 AR 點穴")
                     Spacer()
-                    Text("\(p.totalSeconds)s")
-                        .font(.subheadline.monospacedDigit()).opacity(0.6)
+                    Text("\(p.totalSeconds)s").font(.subheadline.monospacedDigit()).opacity(0.6)
                     Image(systemName: "arrow.right")
                 }
-                .font(.headline)
-                .foregroundStyle(Theme.ocean)
+                .font(.headline).foregroundStyle(Theme.ocean)
                 .padding(.vertical, 16).padding(.horizontal, 20)
                 .background(.white, in: Capsule())
             }
@@ -117,192 +107,170 @@ struct DailyView: View {
         .shadow(color: Theme.ocean.opacity(0.28), radius: 24, y: 12)
     }
 
-    // MARK: 健康指標
+    // MARK: 🎴 看看狀態吧
 
-    private var healthMetricsRow: some View {
+    private var statusCard: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Label("今日健康", systemImage: "heart.fill")
+            Label("看看狀態吧", systemImage: "sparkles.rectangle.stack")
                 .font(.headline)
                 .foregroundStyle(.primary)
 
-            let metrics = env.healthMetrics
-            if metrics.isEmpty {
+            if isLoadingInsights {
                 HStack {
-                    Text("尚未取得健康資料")
+                    ProgressView().scaleEffect(0.8)
+                    Text("與中醫知識對話中…")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+            } else if let card = insights {
+                // ── 卡片主體 ──
+                VStack(alignment: .leading, spacing: 0) {
+                    // 頂部漸層條
+                    cardTopBar(color: card.color)
+
+                    // 內容
+                    VStack(alignment: .leading, spacing: 16) {
+                        // 狀態標題 + 簡短摘要
+                        HStack(alignment: .center, spacing: 12) {
+                            ZStack {
+                                Circle().fill(card.color.opacity(0.15))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: card.icon)
+                                    .font(.title3).foregroundStyle(card.color)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.cardTitle)
+                                    .font(.system(size: 20, weight: .bold))
+                                Text(card.brief)
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                                    .lineLimit(3)
+                            }
+                        }
+
+                        // 中醫小知識 blurbs
+                        if !card.tcmTip.isEmpty {
+                            tipRow(icon: "leaf.fill", color: .green, title: "養生小知識", text: card.tcmTip)
+                        }
+                        if !card.tcmDetail.isEmpty {
+                            tipRow(icon: "book.closed.fill", color: .orange, title: "中醫說", text: card.tcmDetail)
+                        }
+
+                        // 穴位推薦
+                        if let ap = card.acupoint {
+                            HStack(spacing: 12) {
+                                Image(systemName: "hand.point.up.fill")
+                                    .font(.title3).foregroundStyle(Theme.teal)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("建議按壓 \(ap.name)（\(ap.id)）")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(ap.reason)
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(12)
+                            .background(Theme.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                        }
+
+                        // 底部：飲食 + 節氣
+                        HStack(spacing: 12) {
+                            if !card.diet.isEmpty {
+                                Label(card.diet, systemImage: "fork.knife")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            if !card.seasonHint.isEmpty {
+                                Label(card.seasonHint, systemImage: "sun.haze.fill")
+                                    .font(.caption).foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                    .padding(Theme.Spacing.l)
+                }
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 24))
+                .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
+            } else {
+                // 尚未載入
+                HStack {
+                    Text("點擊載入今日中醫小知識")
                         .font(.subheadline).foregroundStyle(.secondary)
                     Spacer()
-                    if env.isLoading {
-                        ProgressView().scaleEffect(0.8)
-                    }
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundStyle(Theme.teal)
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                    ForEach(metrics) { metric in
-                        healthMetricCard(metric)
-                    }
-                }
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+                .onTapGesture { Task { await loadInsights() } }
             }
         }
     }
 
-    private func healthMetricCard(_ metric: HealthMetric) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Image(systemName: metric.kind.symbol)
-                    .font(.caption)
-                    .foregroundStyle(metric.kind.tint)
-                Spacer()
-                Text(metric.status)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(metric.statusColor)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(metric.statusColor.opacity(0.12), in: Capsule())
+    private func tipRow(icon: String, color: Color, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.subheadline).foregroundStyle(color)
+                .frame(width: 20, height: 20)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(color)
+                Text(text).font(.subheadline).foregroundStyle(.primary)
             }
-            Text("\(metric.value)")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
-            Text(metric.kind.unit)
-                .font(.caption).foregroundStyle(.secondary)
-
-            // 進度條
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color(.systemGray5)).frame(height: 4)
-                    Capsule().fill(metric.kind.tint)
-                        .frame(width: geo.size.width * metric.level, height: 4)
-                }
-            }
-            .frame(height: 4)
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+        .background(color.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: 7 天趨勢
-
-    private var weeklyTrend: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Label("7 天健康趨勢", systemImage: "chart.xyaxis.line")
-                .font(.headline)
-
-            let vitals = env.weeklyVitals()
-            if vitals.count >= 2 {
-                Chart {
-                    ForEach(vitals, id: \.date) { v in
-                        LineMark(
-                            x: .value("日期", v.date, unit: .day),
-                            y: .value("HRV", v.hrv)
-                        )
-                        .foregroundStyle(Theme.teal)
-                        .interpolationMethod(.catmullRom)
-
-                        AreaMark(
-                            x: .value("日期", v.date, unit: .day),
-                            y: .value("HRV", v.hrv)
-                        )
-                        .foregroundStyle(LinearGradient(
-                            colors: [Theme.teal.opacity(0.3), Theme.teal.opacity(0.0)],
-                            startPoint: .top, endPoint: .bottom
-                        ))
-                        .interpolationMethod(.catmullRom)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                        AxisValueLabel(format: .dateTime.weekday(.abbreviated))
-                    }
-                }
-                .chartYAxisLabel("HRV (ms)")
-                .frame(height: 160)
-                .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-
-                // 睡眠分數趨勢
-                Chart {
-                    ForEach(vitals, id: \.date) { v in
-                        BarMark(
-                            x: .value("日期", v.date, unit: .day),
-                            y: .value("睡眠", v.sleepScore)
-                        )
-                        .foregroundStyle(.orange.opacity(0.7))
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                        AxisValueLabel(format: .dateTime.weekday(.abbreviated))
-                    }
-                }
-                .chartYAxisLabel("睡眠分數")
-                .frame(height: 120)
-                .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            } else {
-                Text("資料不足，需要更多天的健康資料")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .padding()
+    private func cardTopBar(color: Color) -> some View {
+        HStack(spacing: 8) {
+            ForEach(0..<4, id: \.self) { _ in
+                Capsule().fill(color.opacity(0.3)).frame(height: 3)
             }
         }
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.top, Theme.Spacing.s)
     }
 
-    // MARK: AI 個人化建議
+    // MARK: Load
 
-    private var aiRecommendation: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Label("AI 個人化建議", systemImage: "sparkles")
-                .font(.headline)
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("根據您近期的健康數據與節氣，AI 已為您調整今日處方。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let term = env.currentSolarTerm {
-                    HStack(spacing: 8) {
-                        Image(systemName: "sun.haze.fill")
-                            .foregroundStyle(.orange)
-                        Text("今日節氣：\(term.name) · \(term.climateTag)")
-                            .font(.caption)
-                    }
-                    Text(term.advice)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Button {
-                    showAIAnalysis = true
-                } label: {
-                    HStack {
-                        Image(systemName: "sparkles")
-                        Text("查看完整分析")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.teal)
-                    .padding(.vertical, 12).padding(.horizontal, 16)
-                    .background(Theme.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-            .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-        }
+    private func loadInsights() async {
+        isLoadingInsights = true
+        insights = await env.fetchHealthInsights()
+        isLoadingInsights = false
     }
 }
 
-// MARK: - HealthMetric display helpers
+// MARK: - Insights Model
 
-extension HealthMetric {
-    var statusColor: Color {
-        switch status {
-        case "良好", "活躍", "充足", "穩定": .green
-        case "一般", "正常", "適中": .orange
-        default: .red
+struct HealthInsights: Codable {
+    let cardTitle: String
+    let statusColor: String
+    let brief: String
+    let tcmTip: String
+    let tcmDetail: String
+    let acupoint: InsightAcupoint?
+    let diet: String
+    let seasonHint: String
+
+    struct InsightAcupoint: Codable {
+        let id: String
+        let name: String
+        let reason: String
+    }
+
+    var color: Color {
+        switch statusColor {
+        case "green": .green
+        case "orange": .orange
+        case "red": .red
+        default: Theme.teal
         }
     }
-}
 
-#Preview {
-    DailyView().environment(AppEnvironment())
+    var icon: String {
+        switch statusColor {
+        case "green": "heart.fill"
+        case "orange": "exclamationmark.triangle.fill"
+        case "red": "xmark.octagon.fill"
+        default: "sparkles"
+        }
+    }
 }
