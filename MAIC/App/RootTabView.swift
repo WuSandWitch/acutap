@@ -2,10 +2,29 @@ import SwiftUI
 
 struct RootTabView: View {
     @State private var selection: Tab = .daily
+    @State private var auth = AuthService.shared
 
     enum Tab: Hashable { case daily, ar, ai }
 
     var body: some View {
+        Group {
+            switch auth.state {
+            case .unknown:
+                // 正在檢查 Keychain 中是否有 token
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+            case .authenticated:
+                mainTabs
+            case .unauthenticated:
+                LoginView()
+            }
+        }
+        .environment(\.colorScheme, .dark)
+    }
+
+    private var mainTabs: some View {
         TabView(selection: $selection) {
             DailyView(goToAR: { selection = .ar })
                 .tag(Tab.daily)

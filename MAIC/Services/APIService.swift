@@ -35,27 +35,38 @@ final class APIService {
         var request = URLRequest(url: endpoint.url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        addAuthHeader(&request)
         return try await perform(request)
     }
-    
+
     // POST request with body
     func post<T: Decodable, B: Encodable>(_ endpoint: APIConfig.Endpoint, body: B) async throws -> T {
         var request = URLRequest(url: endpoint.url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        addAuthHeader(&request)
         request.httpBody = try JSONEncoder().encode(body)
         return try await perform(request)
     }
-    
+
     // POST without generic body (use Data directly)
     func post<T: Decodable>(_ endpoint: APIConfig.Endpoint, jsonData: Data) async throws -> T {
         var request = URLRequest(url: endpoint.url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        addAuthHeader(&request)
         request.httpBody = jsonData
         return try await perform(request)
+    }
+
+    // MARK: Auth Header
+
+    private func addAuthHeader(_ request: inout URLRequest) {
+        if let token = AuthService.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
     }
     
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {

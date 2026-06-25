@@ -208,14 +208,14 @@ final class BodyPoseDetector: @unchecked Sendable {
 
         // — 身體關節 —
         let allJoints: [VNHumanBodyPoseObservation.JointName] = [
-            .head, .neck,
+            .neck,
             .leftShoulder, .rightShoulder,
             .leftElbow, .rightElbow,
             .leftWrist, .rightWrist,
             .leftHip, .rightHip,
             .leftKnee, .rightKnee,
             .leftAnkle, .rightAnkle,
-            .spine, .root,
+            .root,
             .leftEar, .rightEar
         ]
 
