@@ -17,15 +17,32 @@ struct DailyView: View {
         NavigationStack {
             GeometryReader { geo in
                 let topInset = geo.safeAreaInsets.top
-                let heroHeight: CGFloat = prescriptionHeroHeight
-                let spacing: CGFloat = 16
+                let headerHeight: CGFloat = 40  // Hello + 頭像
+                let heroHeight: CGFloat = 260
+                let spacing: CGFloat = 14
                 let bottomPadding: CGFloat = Theme.Spacing.l
-                let cardHeight = geo.size.height - heroHeight - spacing - bottomPadding - topInset - 8
+                let cardHeight = geo.size.height - headerHeight - heroHeight - spacing - bottomPadding - topInset - 8
 
                 VStack(spacing: 0) {
+                    // Hello + 頭像
+                    HStack {
+                        Text("Hello \(env.profile.name)!")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        NavigationLink { ProfileView() } label: {
+                            Circle().fill(Theme.brandGradient).frame(width: 36, height: 36)
+                                .overlay(Text(String(env.profile.name.prefix(1)))
+                                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
+                        }
+                    }
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.top, Theme.Spacing.m)
+
+                    Spacer().frame(height: spacing)
+
                     prescriptionHero
                         .padding(.horizontal, Theme.Spacing.l)
-                        .padding(.top, Theme.Spacing.m)
 
                     Spacer().frame(height: spacing)
 
@@ -45,11 +62,6 @@ struct DailyView: View {
         .task { await loadInsights() }
     }
 
-    // 今日點穴區塊的固定高度
-    private var prescriptionHeroHeight: CGFloat {
-        280
-    }
-
     // MARK: 今日點穴
 
     private var prescriptionHero: some View {
@@ -66,12 +78,6 @@ struct DailyView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                NavigationLink { ProfileView() } label: {
-                    Circle().fill(Theme.brandGradient).frame(width: 38, height: 38)
-                        .overlay(Text(String(env.profile.name.prefix(1)))
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
-                        .shadow(color: .white.opacity(0.25), radius: 6, y: 2)
-                }
             }
 
             HStack(spacing: 5) {
