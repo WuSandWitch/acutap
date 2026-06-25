@@ -30,12 +30,16 @@ struct DailyView: View {
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.primary)
                         Spacer()
-                        NavigationLink { ProfileView() } label: {
+                        NavigationLink {
+                            ProfileView()
+                        } label: {
                             Circle().fill(Theme.brandGradient).frame(width: 36, height: 36)
                                 .overlay(Text(String(env.profile.name.prefix(1)))
                                     .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
+                                .contentShape(Circle())
                         }
                         .buttonStyle(.plain)
+                        .frame(width: 44, height: 44)  // 增加點擊區域
                     }
                     .padding(.horizontal, Theme.Spacing.l)
                     .padding(.top, Theme.Spacing.m)
