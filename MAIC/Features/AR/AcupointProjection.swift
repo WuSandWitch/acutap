@@ -114,7 +114,41 @@ let handAcupointRules: [String: HandJointRule] = [
     "SI4":  .init(refJoint: .wrist,     dx: 0.0,   dy: 0.0),
 ]
 
-// MARK: - 穴位區域分類
+// MARK: - 雙側穴位（左右都有）
+
+/// 這些穴位在人體左右兩側都存在
+let bilateralAcupoints: Set<String> = [
+    "LI4", "LI10", "LI11", "LI1", "LI2", "LI3", "LI5", "LI6", "LI7", "LI8", "LI9", "LI12", "LI13", "LI14", "LI15", "LI16", "LI17", "LI18", "LI19", "LI20",
+    "LU5", "LU7", "LU9", "LU11", "LU1", "LU2", "LU3", "LU4", "LU6", "LU8", "LU10",
+    "ST36", "ST40", "ST37", "ST39", "ST25", "ST1", "ST2", "ST3", "ST4", "ST5", "ST6", "ST7", "ST8", "ST9", "ST10", "ST11", "ST12", "ST13", "ST14", "ST15",
+    "SP6", "SP9", "SP1", "SP2", "SP3", "SP4", "SP5", "SP7", "SP8", "SP10", "SP11",
+    "HT7", "HT1", "HT2", "HT3", "HT4", "HT5", "HT6", "HT8", "HT9",
+    "SI3", "SI4", "SI11", "SI9", "SI1", "SI2", "SI5", "SI6", "SI7", "SI8", "SI10",
+    "BL40", "BL60", "BL13", "BL23", "BL57", "BL1", "BL2", "BL10", "BL11", "BL12",
+    "KI3", "KI1", "KI2", "KI4", "KI5", "KI6", "KI7", "KI8", "KI9", "KI10",
+    "PC6", "PC9", "PC7", "PC8", "PC1", "PC2", "PC3", "PC4", "PC5",
+    "TE5", "TE1", "TE2", "TE3", "TE4", "TE6", "TE7", "TE8", "TE9", "TE10",
+    "GB34", "GB30", "GB39", "GB20", "GB21", "GB1", "GB2", "GB3", "GB4",
+    "LV3", "LV1", "LV2", "LV4", "LV5", "LV6", "LV7", "LV8", "LV9",
+]
+
+// MARK: - 缺失關節警告
+
+/// 判斷某個穴位需要哪些關節才能定位
+func requiredJointsForAcupoint(_ id: String) -> [String] {
+    if handAcupointRules[id] != nil { return ["手掌"] }
+    guard let rule = acupointJointRules[id] else { return [] }
+    let names: [VNHumanBodyPoseObservation.JointName: String] = [
+        .neck:"頸", .root:"髖", .leftShoulder:"左肩", .rightShoulder:"右肩",
+        .leftElbow:"左肘", .rightElbow:"右肘", .leftWrist:"左腕", .rightWrist:"右腕",
+        .leftHip:"左髖", .rightHip:"右髖", .leftKnee:"左膝", .rightKnee:"右膝",
+        .leftAnkle:"左踝", .rightAnkle:"右踝",
+    ]
+    var result: [String] = []
+    if let n = names[rule.proximal] { result.append(n) }
+    if let n = names[rule.distal], n != result.last { result.append(n) }
+    return result
+}
 
 enum AcupointRegion {
     case head, arm, torso, leg
