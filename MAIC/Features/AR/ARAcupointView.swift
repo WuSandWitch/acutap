@@ -67,6 +67,7 @@ struct ARAcupointView: View {
     @State private var scan = false
     @State private var appeared = false
     @State private var showFaceHint = false
+    @State private var showDebugJoints = true
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -112,6 +113,7 @@ struct ARAcupointView: View {
                     if !isGuided { scannerGuide(in: geo.size) }
                     meridianPath(in: geo.size)
                     markerOverlay(in: geo.size)
+                    if showDebugJoints { debugJointOverlay(in: geo.size) }
                 }
             }
             .ignoresSafeArea()
@@ -285,6 +287,95 @@ struct ARAcupointView: View {
         let y = 0.26 + t * 0.5
         let x = 0.5 + sin(t * .pi * 2) * 0.17
         return CGPoint(x: x * size.width, y: y * size.height)
+    }
+
+    // MARK: Debug — 顯示 Vision 關節點
+
+    private func debugJointOverlay(in size: CGSize) -> some View {
+        guard let body = camera.poseDetector.detectedBody else {
+            return AnyView(EmptyView())
+        }
+        var dots: [String: CGPoint] = [:]
+
+        // Body joints
+        let jointLabels: [VNHumanBodyPoseObservation.JointName: String] = [
+            .neck: "頸", .root: "根",
+            .leftShoulder: "左肩", .rightShoulder: "右肩",
+            .leftElbow: "左肘", .rightElbow: "右肘",
+            .leftWrist: "左腕", .rightWrist: "右腕",
+            .leftHip: "左髖", .rightHip: "右髖",
+            .leftKnee: "左膝", .rightKnee: "右膝",
+            .leftAnkle: "左踝", .rightAnkle: "右踝",
+            .leftEar: "左耳", .rightEar: "右耳",
+        ]
+        for (joint, label) in jointLabels {
+            if let pt = body.joints[joint] {
+                let x = (1.0 - pt.x) * size.width
+                let y = pt.y * size.height
+                dots[label] = CGPoint(x: x, y: y)
+            }
+        }
+
+        // Face rect
+        var faceRect: CGRect?
+        if let fr = body.faceRect {
+            let x = (1.0 - fr.minX) * size.width
+            let y = fr.minY * size.height
+            let w = fr.width * size.width
+            let h = fr.height * size.height
+            faceRect = CGRect(x: x, y: y, width: w, height: h)
+        }
+
+        return AnyView(
+            ZStack {
+                // Face box
+                if let fr = faceRect {
+                    Rectangle()
+                        .stroke(Color.orange.opacity(0.6), lineWidth: 2)
+                        .frame(width: fr.width, height: fr.height)
+                        .position(x: fr.midX, y: fr.midY)
+                }
+
+                // Joint dots
+                ForEach(Array(dots.keys.sorted()), id: \.self) { label in
+                    if let pt = dots[label] {
+                        ZStack {
+                            Circle().fill(Color.yellow.opacity(0.8))
+                                .frame(width: 12, height: 12)
+                            Text(label)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.yellow)
+                                .offset(y: -14)
+                        }
+                        .position(pt)
+                    }
+                }
+
+                // Hand joints
+                if let leftHand = body.handJoints[.left] {
+                    ForEach(Array(leftHand.keys), id: \.rawValue) { j in
+                        if let pt = leftHand[j] {
+                            let x = (1.0 - pt.x) * size.width
+                            let y = pt.y * size.height
+                            Circle().fill(Color.cyan.opacity(0.8))
+                                .frame(width: 6, height: 6)
+                                .position(x: x, y: y)
+                        }
+                    }
+                }
+                if let rightHand = body.handJoints[.right] {
+                    ForEach(Array(rightHand.keys), id: \.rawValue) { j in
+                        if let pt = rightHand[j] {
+                            let x = (1.0 - pt.x) * size.width
+                            let y = pt.y * size.height
+                            Circle().fill(Color.green.opacity(0.8))
+                                .frame(width: 6, height: 6)
+                                .position(x: x, y: y)
+                        }
+                    }
+                }
+            }
+        )
     }
 
     // MARK: Top HUD
