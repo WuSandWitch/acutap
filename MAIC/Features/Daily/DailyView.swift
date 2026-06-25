@@ -293,17 +293,6 @@ struct DailyView: View {
 
 // MARK: - HealthMetric display helpers
 
-extension HealthMetric.Kind {
-    var unit: String {
-        switch self {
-        case .hrv: "ms"
-        case .sleep: "分"
-        case .restingHR: "bpm"
-        case .steps: "步"
-        }
-    }
-}
-
 extension HealthMetric {
     var statusColor: Color {
         switch status {
