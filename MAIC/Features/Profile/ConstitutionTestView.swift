@@ -140,7 +140,7 @@ struct ConstitutionTestView: View {
             if currentQuestion < constitutionQuestions.count - 1 {
                 withAnimation(Theme.Motion.smooth) {
                     currentQuestion += 1
-                    savedConstitution = nil
+                    selectedAnswer = nil
                 }
             } else {
                 withAnimation { showResult = true }
