@@ -68,10 +68,44 @@ AVCaptureSession (前鏡頭)
 
 ## 🛠️ 開發
 
+### Build
+
 ```bash
 # 需要 Xcode 15+ / iOS 17+
 open MAIC.xcodeproj
 ```
+
+### 已經正式
+
+| 功能 | 狀態 | 技術 |
+|:----|:-----|:-----|
+| 穴位資料 | ✅ 79穴 (bankroz + WHO) | `RealAcupointData.swift` |
+| AR 人體偵測 | ✅ Vision + Face Mesh | `BodyPoseDetector.swift` |
+| 即時 AR 投影 | ✅ 全身 / 臉部 / fallback | `ARAcupointView.swift` |
+| AR 引導點穴 | ✅ 計時器 + 導引流程 | `ARAcupointView.swift` |
+| 每日點穴主畫面 | ✅ UI 完整 | `DailyView.swift` |
+| AI 助手 UI | ✅ 對話 + 複選 | `AIAssistantView.swift` |
+| 設計系統 | ✅ 漸層、動畫、元件 | `DesignSystem/` |
+
+### 待實作
+
+| 優先 | 功能 | 檔案 | 現在 | 需要改成 |
+|:----:|:----|:-----|:-----|:---------|
+| 🔴 P0 | **AI 真正對話** | `AIAssistantView.swift` | 12 組 keyword matching | 串 LLM API (OpenAI/Claude) |
+| 🔴 P0 | **HealthKit** | `HealthService.swift` | `SeededRandom` 亂數 | 讀取 Apple Health 真實資料 |
+| 🟡 P1 | **天氣 + 節氣** | `MockDataProvider.swift` | 死寫「小滿」「臺北 29°C」 | OpenWeatherMap + 節氣計算 |
+| 🟡 P1 | **雲端存檔** | `AppEnvironment.swift` | App 重開就消失 | Firebase / iCloud Sync |
+| 🟢 P2 | **用戶認證** | `ProfileView.swift` | 永遠的 Luis | Sign in with Apple |
+| 🟢 P2 | **個人化處方** | `PrescriptionEngine.swift` | 硬編碼 8 組 | AI 動態生成 + TCM 知識庫 |
+
+### 需要的後端
+
+| 服務 | 用途 | 建議 |
+|:----|:------|:-----|
+| 🌤 OpenWeatherMap | 天氣 + TCM 提示 | 免費 tier |
+| 🧠 OpenAI / Claude API | AI 助手對話 | GPT-4o-mini 便宜又快 |
+| ☁️ Firebase | 認證 + 資料庫 | 免費 tier 夠用 |
+| 📱 HealthKit | 心率、睡眠、步數 | 原生，免後端 |
 
 ## 📦 依賴
 
