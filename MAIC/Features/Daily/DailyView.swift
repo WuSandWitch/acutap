@@ -216,8 +216,8 @@ struct DailyView: View {
             }
             .padding(.bottom, 14)
 
-            // ── 飲食 + 節氣（兩行）──
-            VStack(alignment: .leading, spacing: 6) {
+            // ── 飲食 + 節氣（兩行，滿版）──
+            VStack(alignment: .leading, spacing: 8) {
                 if !card.dietTip.isEmpty {
                     Label(card.dietTip, systemImage: "fork.knife")
                         .font(.subheadline).foregroundStyle(.primary)
@@ -227,8 +227,9 @@ struct DailyView: View {
                         .font(.subheadline).foregroundStyle(.orange)
                 }
             }
-            .padding(10)
-            .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .padding(.bottom, 16)
 
             // ── 穴位推薦（重點凸顯）──
