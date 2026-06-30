@@ -205,7 +205,7 @@ struct DailyView: View {
 
             // ── 症狀 + 中醫解釋 ──
             VStack(alignment: .leading, spacing: 4) {
-                Text(card.symptom)
+                Label(card.symptom, systemImage: "figure.stand")
                     .font(.subheadline.weight(.medium))
                 Text(card.tcmExplanation)
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -216,8 +216,8 @@ struct DailyView: View {
             // ── 飲食 + 節氣 ──
             HStack(spacing: 16) {
                 if !card.dietTip.isEmpty {
-                    Text(card.dietTip)
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Label(card.dietTip, systemImage: "fork.knife")
+                        .font(.subheadline).foregroundStyle(.primary)
                 }
                 if !card.seasonHint.isEmpty {
                     Spacer()
