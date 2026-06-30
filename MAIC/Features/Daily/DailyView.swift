@@ -12,6 +12,7 @@ struct DailyView: View {
     @State private var arSession: PointSession?
     @State private var insights: HealthInsights?
     @State private var isLoadingInsights = false
+    @State private var showProfile = false
 
     var body: some View {
         NavigationStack {
@@ -30,16 +31,13 @@ struct DailyView: View {
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.primary)
                         Spacer()
-                        NavigationLink {
-                            ProfileView()
-                        } label: {
+                        Button { showProfile = true } label: {
                             Circle().fill(Theme.brandGradient).frame(width: 36, height: 36)
                                 .overlay(Text(String(env.profile.name.prefix(1)))
                                     .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
-                                .contentShape(Circle())
                         }
                         .buttonStyle(.plain)
-                        .frame(width: 44, height: 44)  // 增加點擊區域
+                        .frame(width: 44, height: 44)
                     }
                     .padding(.horizontal, Theme.Spacing.l)
                     .padding(.top, Theme.Spacing.m)
@@ -62,6 +60,9 @@ struct DailyView: View {
             .navigationBarHidden(true)
             .fullScreenCover(item: $arSession) { session in
                 ARAcupointView(session: session).environment(env)
+            }
+            .sheet(isPresented: $showProfile) {
+                ProfileView()
             }
         }
         .task { await loadInsights() }
