@@ -186,57 +186,84 @@ struct DailyView: View {
     }
 
     private func cardBody(_ card: HealthInsights) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // 天氣狀態
+        // Mock 統計：根據穴位人氣給隨機人數
+        let pressCount = Int.random(in: 23...187)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // ── 天氣標題列 ──
             HStack(spacing: 8) {
                 Text(card.weatherTitle)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.headline)
                 Spacer()
-                Text(card.humidityText)
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "humidity")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    Text(card.humidityText)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
+            .padding(.bottom, 12)
 
-            Divider().foregroundStyle(.tertiary)
-
-            // 症狀
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "figure.stand")
-                    .font(.caption).foregroundStyle(.orange)
-                Text(card.symptom)
+            // ── 症狀 + 中醫解釋（同一區塊）──
+            VStack(alignment: .leading, spacing: 6) {
+                Label(card.symptom, systemImage: "figure.stand")
                     .font(.subheadline.weight(.medium))
-            }
+                    .foregroundStyle(.primary)
 
-            // 中醫解釋
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "leaf")
-                    .font(.caption).foregroundStyle(.green)
                 Text(card.tcmExplanation)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 24)  // 對齊 label 內文
             }
+            .padding(.bottom, 16)
 
-            // 穴位推薦
-            HStack(spacing: 10) {
-                Image(systemName: "hand.point.up.fill")
-                    .font(.subheadline).foregroundStyle(Theme.teal)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("建議按壓 \(card.acupointName)（\(card.acupointId)）")
-                        .font(.subheadline.weight(.semibold))
+            // ── 穴位推薦卡片（獨立凸顯）──
+            HStack(spacing: 12) {
+                // 穴位 icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Theme.teal.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "hand.point.up.fill")
+                        .font(.title3).foregroundStyle(Theme.teal)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(card.acupointName)
+                            .font(.subheadline.weight(.semibold))
+                        Text(card.acupointId)
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                     Text(card.acupointReason)
                         .font(.caption).foregroundStyle(.secondary)
                 }
-            }
-            .padding(10)
-            .background(Theme.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
-            // 底部
-            HStack(spacing: 12) {
+                Spacer()
+
+                // 按壓人數標籤
+                VStack(spacing: 1) {
+                    Text("\(pressCount)")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.teal)
+                    Text("今天")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(12)
+            .background(Theme.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+            .padding(.bottom, 14)
+
+            // ── 底部：飲食 + 節氣 ──
+            HStack(spacing: 16) {
                 if !card.dietTip.isEmpty {
                     Label(card.dietTip, systemImage: "fork.knife")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if !card.seasonHint.isEmpty {
+                    Spacer()
                     Label(card.seasonHint, systemImage: "sun.haze")
                         .font(.caption).foregroundStyle(.orange)
                 }
