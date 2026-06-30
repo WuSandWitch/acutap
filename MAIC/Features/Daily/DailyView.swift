@@ -208,7 +208,7 @@ struct DailyView: View {
 
             // ── 症狀 + 中醫解釋 ──
             VStack(alignment: .leading, spacing: 4) {
-                Label(card.symptom, systemImage: "figure.stand")
+                Text(card.symptom)
                     .font(.subheadline.weight(.medium))
                 Text(card.tcmExplanation)
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -216,23 +216,20 @@ struct DailyView: View {
             }
             .padding(.bottom, 14)
 
-            // ── 飲食 + 節氣 ──
-            if !card.dietTip.isEmpty || !card.seasonHint.isEmpty {
-                HStack(spacing: 16) {
-                    if !card.dietTip.isEmpty {
-                        Label(card.dietTip, systemImage: "fork.knife")
-                            .font(.subheadline).foregroundStyle(.primary)
-                    }
-                    if !card.seasonHint.isEmpty {
-                        Spacer()
-                        Label(card.seasonHint, systemImage: "sun.haze")
-                            .font(.subheadline).foregroundStyle(.orange)
-                    }
+            // ── 飲食 + 節氣（兩行）──
+            VStack(alignment: .leading, spacing: 6) {
+                if !card.dietTip.isEmpty {
+                    Label(card.dietTip, systemImage: "fork.knife")
+                        .font(.subheadline).foregroundStyle(.primary)
                 }
-                .padding(10)
-                .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-                .padding(.bottom, 16)
+                if !card.seasonHint.isEmpty {
+                    Label(card.seasonHint, systemImage: "sun.haze")
+                        .font(.subheadline).foregroundStyle(.orange)
+                }
             }
+            .padding(10)
+            .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .padding(.bottom, 16)
 
             // ── 穴位推薦（重點凸顯）──
             VStack(spacing: 10) {
