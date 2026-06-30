@@ -85,6 +85,10 @@ final class APIService {
         
         guard (200...299).contains(httpResponse.statusCode) else {
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            // Token 過期 → 自動登出，讓 RootTabView 顯示登入畫面
+            if httpResponse.statusCode == 401 {
+                await MainActor.run { AuthService.shared.signOut() }
+            }
             throw APIError.httpError(statusCode: httpResponse.statusCode, message: message)
         }
         
