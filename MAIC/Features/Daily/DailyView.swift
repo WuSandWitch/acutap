@@ -1,8 +1,3 @@
-//
-//  DailyView.swift
-//  MAIC
-//
-
 import SwiftUI
 
 struct DailyView: View {
@@ -18,43 +13,46 @@ struct DailyView: View {
         NavigationStack {
             GeometryReader { geo in
                 let topInset = geo.safeAreaInsets.top
-                let headerHeight: CGFloat = 40  // Hello + 頭像
+                let headerHeight: CGFloat = 40
                 let heroHeight: CGFloat = 260
                 let spacing: CGFloat = 14
                 let bottomPadding: CGFloat = Theme.Spacing.l
                 let cardHeight = geo.size.height - headerHeight - heroHeight - spacing - bottomPadding - topInset - 8
 
-                VStack(spacing: 0) {
-                    // Hello + 頭像
-                    HStack {
-                        Text("Hello, \(env.profile.name)!")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Button { showProfile = true } label: {
-                            Circle().fill(Theme.brandGradient).frame(width: 36, height: 36)
-                                .overlay(Text(String(env.profile.name.prefix(1)))
-                                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Hello + 頭像
+                        HStack {
+                            Text("Hello, \(env.profile.name)!")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Button { showProfile = true } label: {
+                                Circle().fill(Theme.brandGradient).frame(width: 36, height: 36)
+                                    .overlay(Text(String(env.profile.name.prefix(1)))
+                                        .font(.subheadline.weight(.semibold)).foregroundStyle(.white))
+                            }
+                            .buttonStyle(.plain)
+                            .frame(width: 44, height: 44)
                         }
-                        .buttonStyle(.plain)
-                        .frame(width: 44, height: 44)
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .padding(.top, Theme.Spacing.m)
+
+                        Spacer().frame(height: spacing)
+
+                        prescriptionHero
+                            .padding(.horizontal, Theme.Spacing.l)
+
+                        Spacer().frame(height: spacing)
+
+                        statusCard
+                            .frame(height: max(cardHeight, 160))
+                            .padding(.horizontal, Theme.Spacing.l)
+                            .padding(.bottom, bottomPadding)
                     }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.top, Theme.Spacing.m)
-
-                    Spacer().frame(height: spacing)
-
-                    prescriptionHero
-                        .padding(.horizontal, Theme.Spacing.l)
-
-                    Spacer().frame(height: spacing)
-
-                    statusCard
-                        .frame(height: max(cardHeight, 160))
-                        .padding(.horizontal, Theme.Spacing.l)
-                        .padding(.bottom, bottomPadding)
+                    .frame(width: geo.size.width, height: geo.size.height)
                 }
-                .frame(width: geo.size.width, height: geo.size.height)
+                .refreshable { await loadInsights() }
             }
             .background(Color(.systemBackground))
             .navigationBarHidden(true)
@@ -122,15 +120,14 @@ struct DailyView: View {
                     .offset(x: 120, y: -100).blur(radius: 5)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: Theme.ocean.opacity(0.2), radius: 18, y: 10)
     }
 
-    // MARK: 🎴 看看狀態吧
+    // MARK: 看看狀態吧
 
     private var statusCard: some View {
         VStack(spacing: 0) {
-            // 標題列（固定）
             HStack(spacing: 6) {
                 Image(systemName: "sparkles").font(.caption).foregroundStyle(Theme.teal)
                 Text("看看狀態吧")
@@ -149,29 +146,17 @@ struct DailyView: View {
 
             Divider().foregroundStyle(.tertiary).padding(.bottom, 12)
 
-            // 內容區（固定高度內填滿）
             if isLoadingInsights {
                 Spacer()
-                HStack {
-                    Spacer()
-                    VStack(spacing: 6) {
-                        ProgressView().scaleEffect(0.8)
-                        Text("載入中…")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
+                HStack { Spacer(); Text("載入中…").font(.subheadline).foregroundStyle(.secondary); Spacer() }
                 Spacer()
             } else if let card = insights {
                 cardBody(card)
-                    .frame(maxHeight: .infinity, alignment: .top)
             } else {
                 Spacer()
-                HStack {
-                    Spacer()
-                    Text("點擊重新整理以載入")
+                Button { Task { await loadInsights() } } label: {
+                    Text("下拉或點擊重新整理")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Spacer()
                 }
                 Spacer()
             }
@@ -189,34 +174,26 @@ struct DailyView: View {
         let pressCount = Int.random(in: 23...187)
 
         return VStack(alignment: .leading, spacing: 0) {
-            // ── 天氣 ──
             HStack(spacing: 8) {
-                Text(card.weatherTitle)
-                    .font(.headline)
+                Text(card.weatherTitle).font(.headline)
                 Spacer()
                 HStack(spacing: 4) {
-                    Image(systemName: "humidity")
-                        .font(.caption2).foregroundStyle(.secondary)
-                    Text(card.humidityText)
-                        .font(.caption).foregroundStyle(.secondary)
+                    Image(systemName: "humidity").font(.caption2).foregroundStyle(.secondary)
+                    Text(card.humidityText).font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(.bottom, 12)
 
-            Divider()
-                .padding(.bottom, 12)
+            Divider().padding(.bottom, 12)
 
-            // ── 症狀 + 中醫解釋 ──
             VStack(alignment: .leading, spacing: 4) {
-                Text(card.symptom)
-                    .font(.subheadline.weight(.medium))
+                Text(card.symptom).font(.subheadline.weight(.medium))
                 Text(card.tcmExplanation)
                     .font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.bottom, 14)
 
-            // ── 飲食 + 節氣（兩行，滿版）──
             VStack(alignment: .leading, spacing: 8) {
                 if !card.dietTip.isEmpty {
                     HStack(spacing: 10) {
@@ -242,7 +219,6 @@ struct DailyView: View {
             .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .padding(.bottom, 16)
 
-            // ── 穴位推薦（重點凸顯）──
             VStack(spacing: 10) {
                 HStack(spacing: 12) {
                     ZStack {
@@ -253,26 +229,19 @@ struct DailyView: View {
                             .font(.title3).foregroundStyle(Theme.teal)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(card.acupointName)
-                            .font(.subheadline.weight(.semibold))
-                        Text(card.acupointReason)
-                            .font(.caption).foregroundStyle(.secondary)
+                        Text(card.acupointName).font(.subheadline.weight(.semibold))
+                        Text(card.acupointReason).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(card.acupointId)
-                        .font(.caption).foregroundStyle(.tertiary)
+                    Text(card.acupointId).font(.caption).foregroundStyle(.tertiary)
                 }
-
-                // 按壓人數
                 HStack(spacing: 0) {
                     Spacer()
-                    Text("今天已有 ")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text("今天已有 ").font(.caption).foregroundStyle(.secondary)
                     Text("\(pressCount)")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.teal)
-                    Text(" 人按壓此穴")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(" 人按壓此穴").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                 }
             }
@@ -281,16 +250,12 @@ struct DailyView: View {
         }
     }
 
-    // MARK: Load
-
     private func loadInsights() async {
         isLoadingInsights = true
         insights = await env.fetchHealthInsights()
         isLoadingInsights = false
     }
 }
-
-// MARK: - Insights Model
 
 struct HealthInsights: Codable {
     let weatherTitle: String
