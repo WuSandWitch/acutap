@@ -216,7 +216,7 @@ struct DailyView: View {
             // ── 飲食 + 節氣 ──
             HStack(spacing: 16) {
                 if !card.dietTip.isEmpty {
-                    Label(card.dietTip, systemImage: "fork.knife")
+                    Text(card.dietTip)
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 if !card.seasonHint.isEmpty {
