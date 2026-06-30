@@ -219,12 +219,22 @@ struct DailyView: View {
             // ── 飲食 + 節氣（兩行，滿版）──
             VStack(alignment: .leading, spacing: 8) {
                 if !card.dietTip.isEmpty {
-                    Label(card.dietTip, systemImage: "fork.knife")
-                        .font(.subheadline).foregroundStyle(.primary)
+                    HStack(spacing: 10) {
+                        Image(systemName: "fork.knife")
+                            .font(.subheadline).foregroundStyle(.primary)
+                            .frame(width: 16, alignment: .center)
+                        Text(card.dietTip)
+                            .font(.subheadline).foregroundStyle(.primary)
+                    }
                 }
                 if !card.seasonHint.isEmpty {
-                    Label(card.seasonHint, systemImage: "sun.haze")
-                        .font(.subheadline).foregroundStyle(.orange)
+                    HStack(spacing: 10) {
+                        Image(systemName: "sun.haze")
+                            .font(.subheadline).foregroundStyle(.orange)
+                            .frame(width: 16, alignment: .center)
+                        Text(card.seasonHint)
+                            .font(.subheadline).foregroundStyle(.orange)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
