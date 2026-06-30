@@ -186,52 +186,58 @@ struct DailyView: View {
 
     private func cardBody(_ card: HealthInsights) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            // 狀態
+            // 天氣狀態
             HStack(spacing: 8) {
-                Circle().fill(card.color).frame(width: 8, height: 8)
-                Text(card.cardTitle)
-                    .font(.system(size: 17, weight: .semibold))
+                Text(card.weatherTitle)
+                    .font(.system(size: 17, weight: .bold))
                 Spacer()
-                Text(card.brief)
+                Text(card.humidityText)
                     .font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.trailing)
             }
 
-            // 養生小知識
-            if !card.tcmTip.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "leaf")
-                        .font(.caption).foregroundStyle(.green)
-                    Text(card.tcmTip)
-                        .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
+            Divider().foregroundStyle(.tertiary)
+
+            // 症狀
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "figure.stand")
+                    .font(.caption).foregroundStyle(.orange)
+                Text(card.symptom)
+                    .font(.subheadline.weight(.medium))
+            }
+
+            // 中醫解釋
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "leaf")
+                    .font(.caption).foregroundStyle(.green)
+                Text(card.tcmExplanation)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // 穴位推薦
+            HStack(spacing: 10) {
+                Image(systemName: "hand.point.up.fill")
+                    .font(.subheadline).foregroundStyle(Theme.teal)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("建議按壓 \(card.acupointName)（\(card.acupointId)）")
+                        .font(.subheadline.weight(.semibold))
+                    Text(card.acupointReason)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            .padding(10)
+            .background(Theme.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
-            // 中醫說
-            if !card.tcmDetail.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "text.book.closed")
+            // 底部
+            HStack(spacing: 12) {
+                if !card.dietTip.isEmpty {
+                    Label(card.dietTip, systemImage: "fork.knife")
                         .font(.caption).foregroundStyle(.secondary)
-                    Text(card.tcmDetail)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-
-            // 底部：飲食 + 節氣
-            if !card.diet.isEmpty || !card.seasonHint.isEmpty {
-                Divider().foregroundStyle(.tertiary)
-                HStack(spacing: 12) {
-                    if !card.diet.isEmpty {
-                        Label(card.diet, systemImage: "fork.knife")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    if !card.seasonHint.isEmpty {
-                        Label(card.seasonHint, systemImage: "sun.haze")
-                            .font(.caption).foregroundStyle(.orange)
-                    }
+                if !card.seasonHint.isEmpty {
+                    Label(card.seasonHint, systemImage: "sun.haze")
+                        .font(.caption).foregroundStyle(.orange)
                 }
             }
         }
@@ -249,20 +255,13 @@ struct DailyView: View {
 // MARK: - Insights Model
 
 struct HealthInsights: Codable {
-    let cardTitle: String
-    let statusColor: String
-    let brief: String
-    let tcmTip: String
-    let tcmDetail: String
-    let diet: String
+    let weatherTitle: String
+    let humidityText: String
+    let symptom: String
+    let tcmExplanation: String
+    let acupointId: String
+    let acupointName: String
+    let acupointReason: String
+    let dietTip: String
     let seasonHint: String
-
-    var color: Color {
-        switch statusColor {
-        case "green": .green
-        case "orange": .orange
-        case "red": .red
-        default: Theme.teal
-        }
-    }
 }

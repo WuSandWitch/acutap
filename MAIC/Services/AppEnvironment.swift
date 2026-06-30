@@ -169,6 +169,7 @@ final class AppEnvironment {
         let vital = latestVital()
         let dominant = profile.dominantConstitution
         let term = currentSolarTerm
+        let weather = currentWeather
 
         let body: [String: Any] = [
             "hrv": vital.hrv as Any,
@@ -179,6 +180,10 @@ final class AppEnvironment {
             "constitutionScore": profile.constitution[dominant] ?? 0,
             "solarTerm": term?.name ?? "",
             "solarTermAdvice": term?.advice ?? "",
+            "city": weather?.city ?? "台北",
+            "weatherCondition": weather?.condition.rawValue ?? "",
+            "humidity": (weather?.humidity).map(Double.init) ?? nil,
+            "temperature": (weather?.temperature).map(Double.init) ?? nil,
         ]
 
         do {
