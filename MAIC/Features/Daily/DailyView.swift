@@ -201,7 +201,10 @@ struct DailyView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
+
+            Divider()
+                .padding(.bottom, 12)
 
             // ── 症狀 + 中醫解釋 ──
             VStack(alignment: .leading, spacing: 4) {
@@ -211,21 +214,25 @@ struct DailyView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.bottom, 10)
+            .padding(.bottom, 14)
 
             // ── 飲食 + 節氣 ──
-            HStack(spacing: 16) {
-                if !card.dietTip.isEmpty {
-                    Label(card.dietTip, systemImage: "fork.knife")
-                        .font(.subheadline).foregroundStyle(.primary)
+            if !card.dietTip.isEmpty || !card.seasonHint.isEmpty {
+                HStack(spacing: 16) {
+                    if !card.dietTip.isEmpty {
+                        Label(card.dietTip, systemImage: "fork.knife")
+                            .font(.subheadline).foregroundStyle(.primary)
+                    }
+                    if !card.seasonHint.isEmpty {
+                        Spacer()
+                        Label(card.seasonHint, systemImage: "sun.haze")
+                            .font(.subheadline).foregroundStyle(.orange)
+                    }
                 }
-                if !card.seasonHint.isEmpty {
-                    Spacer()
-                    Label(card.seasonHint, systemImage: "sun.haze")
-                        .font(.subheadline).foregroundStyle(.orange)
-                }
+                .padding(10)
+                .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                .padding(.bottom, 16)
             }
-            .padding(.bottom, 14)
 
             // ── 穴位推薦（重點凸顯）──
             VStack(spacing: 10) {
